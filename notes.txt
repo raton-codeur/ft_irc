@@ -1,0 +1,112 @@
+
+ouverture d'un socket TCP
+port 6667 par défaut
+-
+connexion d'un client
+
+NICK <nickname>
+pseudo public unique
+
+
+USER <username> <hostname> <servername> <realname>
+identification d'un utilisateur (pas besoin d'être unique)
+on peut utiliser la variable USER de l'utilisateur qui se connecte par exemple
+
+<hostname>
+historiquement c'est le nom de la machine cliente mais on peut l'écraser par l’[IP = hostname] du client
+exemple : localhost
+
+<servername>
+historiquement c'est le nom du serveur mais normalement on pourra hardcoder le nom qu'on veut
+exemple : irc.local
+
+<realname> c'est un texte libre
+-
+les commandes IRC
+
+il y a toujours un prefixe devant les commandes (sinon le serveur l'ajoute)
+format : nickname!username@hostname
+
+commande en texte pour le client ou code numérique pour le serveur
+
+JOIN #canal
+
+PART #canal
+quitter le canal
+
+PRIVMSG <cible> : message
+
+NOTICE <cible> : message
+comme PRIVMSG mais utilisé pour des infos système
+
+PING <token> / PONG <token>
+garder la connexion en vie
+
+QUIT :message
+se déconnecter
+-
+code réponse du serveur
+
+001
+bienvenue
+
+353
+liste des utilisateurs d'un canal
+
+433
+pseudo déjà utilisé
+-
+serveur TCP
+
+créer une socket, l'associer à l'IP et le port 6667 et écouter sur le port 6667
+
+accepter et établir les connexions des clients
+-
+client TCP
+
+créer une socket et se connecter à l'IP du serveur sur le port 6667
+-
+socket
+
+une socket réseau est définie par
+(IP locale, Port local, IP distante, Port distant, Protocole)
+
+exemple :
+Client : 192.168.1.25:49152 → TCP → 192.168.1.10:6667 : Serveur IRC
+
+
+commande socket
+
+int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+client et serveur
+
+bind(sockfd, ...);
+associer la socket à une IP et un port
+serveur
+
+listen(sockfd, 5);
+mise en écoute
+serveur
+
+int client_fd = accept(sockfd, ...);
+accepter une connexion
+serveur
+
+connect(sockfd, ...);
+demander une connexion au serveur
+client
+
+send(sockfd, "Hello", 5, 0);
+envoyer des données
+
+
+une fois accepté, il y a communication bidirectionnelle via send() et recv()
+
+
+côté serveur, on a une socket qui sert à faire listen.
+quand un client frappe à la porte, le serveur accepte la connexion, ce qui crée une nouvelle socket indépendante dédiée à ce client. la socket principale (listen) reste en attente pour d'autres clients. côté client, chaque client à sa propre socket indépendante.
+-
+
+
+
+
