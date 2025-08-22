@@ -75,26 +75,28 @@ exemple :
 Client : 192.168.1.25:49152 → TCP → 192.168.1.10:6667 : Serveur IRC
 
 
-commande socket
+côté serveur, on a une socket qui sert à faire listen.
+quand un client frappe à la porte, le serveur accepte la connexion, ce qui crée une nouvelle socket indépendante dédiée à ce client. la socket principale (listen) reste en attente pour d'autres clients. côté client, chaque client à sa propre socket indépendante.
+
 
 int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-client et serveur
+cote client et serveur
 
 bind(sockfd, ...);
 associer la socket à une IP et un port
-serveur
+cote serveur
 
 listen(sockfd, 5);
 mise en écoute
-serveur
+cote serveur
 
 int client_fd = accept(sockfd, ...);
 accepter une connexion
-serveur
+cote serveur
 
 connect(sockfd, ...);
 demander une connexion au serveur
-client
+cote client
 
 send(sockfd, "Hello", 5, 0);
 envoyer des données
@@ -103,8 +105,6 @@ envoyer des données
 une fois accepté, il y a communication bidirectionnelle via send() et recv()
 
 
-côté serveur, on a une socket qui sert à faire listen.
-quand un client frappe à la porte, le serveur accepte la connexion, ce qui crée une nouvelle socket indépendante dédiée à ce client. la socket principale (listen) reste en attente pour d'autres clients. côté client, chaque client à sa propre socket indépendante.
 -
 
 
