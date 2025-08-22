@@ -105,8 +105,25 @@ envoyer des données
 une fois accepté, il y a communication bidirectionnelle via send() et recv()
 
 
--
+#include <arpa/inet.h>
+pour tout ce qui est socket
+
+
+struct sockaddr_in address;
+décrire une adresse IP : type (IPv4 par exemple), port, adresse IP
+pour bind(), connect(), accept()
+struct sockaddr_in {
+    sa_family_t    sin_family; // type d’adresse (toujours AF_INET pour IPv4)
+    in_port_t      sin_port;   // port (format réseau = big endian)
+    struct in_addr sin_addr;   // adresse IP
+    unsigned char  sin_zero[8]; // padding (pas utilisé)
+};
+struct in_addr {
+    uint32_t s_addr;  // adresse IPv4 (ex : 127.0.0.1)
+};
+pour IPv6 c'est la structure sockaddr_in6 et AF_INET6
 
 
 
-
+pour IA
+explique moi l'appel : socket(AF_INET, SOCK_STREAM, 0);

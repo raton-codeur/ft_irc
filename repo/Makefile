@@ -15,6 +15,7 @@ $(NAME) : $(OBJS)
 	c++ $(FLAGS) $(OBJS) -o $@
 
 clean :
+	reset
 	@ rm -rf tmp && echo "clean"
 
 fclean : clean
@@ -25,4 +26,7 @@ re : fclean all
 test : re
 	./$(NAME)
 
-.PHONY: all clean fclean re test
+client :
+	nc localhost 6667
+
+.PHONY: all clean fclean re test client
