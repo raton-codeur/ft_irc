@@ -24,10 +24,9 @@ exemple : irc.local
 -
 les commandes IRC
 
-il y a toujours un prefixe devant les commandes (sinon le serveur l'ajoute)
+il y a toujours un prefixe sous entendu ou explicite devant les commandes
 format : nickname!username@hostname
 
-commande en texte pour le client ou code numérique pour le serveur
 
 JOIN #canal
 
@@ -45,7 +44,8 @@ garder la connexion en vie
 QUIT :message
 se déconnecter
 -
-code réponse du serveur
+les codes réponse du serveur
+
 
 001
 bienvenue
@@ -58,37 +58,113 @@ pseudo déjà utilisé
 -
 serveur TCP
 
-créer une socket, l'associer à l'IP et le port 6667 et écouter sur le port 6667
+créer un socket, l'associer à l'IP et le port 6667 et écouter sur le port 6667
 
 accepter et établir les connexions des clients
 -
 client TCP
 
-créer une socket et se connecter à l'IP du serveur sur le port 6667
+créer un socket et se connecter à l'IP du serveur sur le port 6667
 -
 socket
 
-une socket réseau est définie par
+un socket réseau est définie par
 (IP locale, Port local, IP distante, Port distant, Protocole)
 
 exemple :
-Client : 192.168.1.25:49152 → TCP → 192.168.1.10:6667 : Serveur IRC
+[Client : 192.168.1.25:49152]
+<- TCP ->
+[Serveur : 192.168.1.10:6667]
 
 
-côté serveur, on a une socket qui sert à faire listen.
-quand un client frappe à la porte, le serveur accepte la connexion, ce qui crée une nouvelle socket indépendante dédiée à ce client. la socket principale (listen) reste en attente pour d'autres clients. côté client, chaque client à sa propre socket indépendante.
+côté serveur, on a un socket qui sert à faire listen.
+quand un client frappe à la porte, le serveur accepte la connexion, ce qui crée un nouveau socket indépendant dédié à ce client. le socket principal (listen) reste en attente pour d'autres clients. côté client, chaque client à son propre socket indépendant.
+-
+#include <arpa/inet.h>
+pour tout ce qui est socket
+-
+créer un socket
+
+int sockfd = socket(int domain, int type, int protocol);
+
+le paramètre domain
+identifie les familles d'adresses que le socket va utiliser
+AF_INET → IPv4
+AF_INET6 → IPv6
+AF_UNIX → socket unix (communication entre processus sur la même machine, pas d’IP)
+on peut aussi mettre PF_INET et PF_INET6, c’est presque pareil
+historiquement, PF_ = protocol family, AF_ = address family
+
+le paramètre type de communication
+SOCK_STREAM pour TCP (on garantit l'arrivée et l'ordre)
+SOCK_DGRAM pour UDP. c'est plus rapide mais la connexion n'est pas fiable comme avec TCP
+SOCK_RAW. c'est rare, réservé aux programmes systèmes comme ping. on accède directement aux paquets réseau
+
+le paramètre protocol
+ça précise le protocol qu'on utilise selon les deux premiers paramètres
+généralement on met 0 pour choisir le protocole par défaut
+
+nous on fera : int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+-
+struct sockaddr_in {
+    sa_family_t    sin_family; // la famille d'adresses (exemple : AF_INET)
+    in_port_t      sin_port;   // port
+    struct in_addr sin_addr;   // adresse
+    unsigned char  sin_zero[8]; // padding (pas utilisé)
+};
+struct in_addr {
+    uint32_t s_addr;  // adresse IPv4 (ex : 127.0.0.1)
+};
+
+"sockaddr" → socket address
+"in" → internet
+
+c'est une structure qui permet de stocker une adresse IPv4
+
+il existe une structure similaire pour l'IPv6 qui s'appelle sockaddr_in6
+
+on peut la caster en (struct sockaddr*), une structure plus générique, pour l'envoyer à bind, connect, accept, sendto, etc
+
+pour remplir sin_port, on doit utiliser : htons(8080)
+"htons" → host to network short
+par "network", on veut parler du "network byte order", c'est-à-dire, l'ordre des octets attendu sur le réseau. en effet, la majorité des PC sont en mode little endian (ils stockent les nombres à l'envers) alors qu'internet utilise du big endian
+short → sur 2 octets
+si une machine est déjà en big endian, htons ne change pas le nombre
+
+il existe aussi htonl pour "long" <-> 32 bits. ça permet de convertir les adresses IPv4 little endian en adresse IPv4 big endian.
+
+exemple :
+
+addr.sin_port = htons(8080);
+addr.sin_addr.s_addr = htonl(0x7F000001); // 127.0.0.1
+
+à l'inverse, on a ntohs et ntohl pour passer du big endian à l'ordre de l'hote.
+-
+la fonction bind
+
+"attacher" un socket à une sockaddr
+
+int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+
+pour addrlen on peut utiliser sizeof(*addr)
+-
+la fonction listen
+
+passer le socket en mode écoute
+
+int listen(int sockfd, int backlog);
+
+backlog c'est le nombre max de connexions en attente que le noyau peut accepter. s'il y a plus de clients qui arrivent en même temps, certains recevront une erreur (ECONNREFUSED).
+
+métaphore d'une salle d'attente entre "listen" et "accept". backlog c'est la capacité max de cette salle d'attente. dès qu'un client est traité avec accept, il quitte la zone.
+-
+la fonction accept
+
+int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 
 
-int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-cote client et serveur
+voir : https://chatgpt.com/c/68b15fc4-18f8-8321-9e5d-28369c8e1ddc
 
-bind(sockfd, ...);
-associer la socket à une IP et un port
-cote serveur
-
-listen(sockfd, 5);
-mise en écoute
-cote serveur
 
 int client_fd = accept(sockfd, ...);
 accepter une connexion
@@ -105,25 +181,7 @@ envoyer des données
 une fois accepté, il y a communication bidirectionnelle via send() et recv()
 
 
-#include <arpa/inet.h>
-pour tout ce qui est socket
-
-
-struct sockaddr_in address;
-décrire une adresse IP : type (IPv4 par exemple), port, adresse IP
-pour bind(), connect(), accept()
-struct sockaddr_in {
-    sa_family_t    sin_family; // type d’adresse (toujours AF_INET pour IPv4)
-    in_port_t      sin_port;   // port (format réseau = big endian)
-    struct in_addr sin_addr;   // adresse IP
-    unsigned char  sin_zero[8]; // padding (pas utilisé)
-};
-struct in_addr {
-    uint32_t s_addr;  // adresse IPv4 (ex : 127.0.0.1)
-};
-pour IPv6 c'est la structure sockaddr_in6 et AF_INET6
 
 
 
-pour IA
-explique moi l'appel : socket(AF_INET, SOCK_STREAM, 0);
+

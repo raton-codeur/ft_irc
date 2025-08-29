@@ -1,25 +1,23 @@
-# solu qui a l'air très bien documentée
+# gérer les arguments
 
-https://github.com/raveriss/ft_irc
+```
+./ircserv <port> <password>
+```
+
+port doit être un nombre
+
+voir les limites sur le password
 
 # fonctions à creuser
 
-- socket
-- close
 - setsockopt
 - getsockname
 - getprotobyname
 - gethostbyname
 - getaddrinfo
 - freeaddrinfo
-- bind
 - connect
-- listen
 - accept
-- htons
-- htonl
-- ntohs
-- ntohl
 - inet_addr
 - inet_ntoa
 - send
@@ -27,7 +25,7 @@ https://github.com/raveriss/ft_irc
 - signal
 - sigaction
 - lseek
-- fstat
+- fstat (spécialement sur mac, pour write, pour rendre les fd non bloquants. seulement autorisé : fcntl(fd, F_SETFL, O_NONBLOCK);)
 - fcntl
-- poll (and equivalent)
+- poll / select / kqueue / epoll (1 seul appel autorisé et nécessaire)
 
