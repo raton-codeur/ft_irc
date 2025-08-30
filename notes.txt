@@ -1,12 +1,8 @@
-
-ouverture d'un socket TCP
-port 6667 par défaut
 -
-connexion d'un client
+connexion d'un client IRC
 
 NICK <nickname>
 pseudo public unique
-
 
 USER <username> <hostname> <servername> <realname>
 identification d'un utilisateur (pas besoin d'être unique)
@@ -27,7 +23,6 @@ les commandes IRC
 il y a toujours un prefixe sous entendu ou explicite devant les commandes
 format : nickname!username@hostname
 
-
 JOIN #canal
 
 PART #canal
@@ -46,7 +41,6 @@ se déconnecter
 -
 les codes réponse du serveur
 
-
 001
 bienvenue
 
@@ -56,29 +50,25 @@ liste des utilisateurs d'un canal
 433
 pseudo déjà utilisé
 -
-serveur TCP
+
+-
+serveur IRC
 
 créer un socket, l'associer à l'IP et le port 6667 et écouter sur le port 6667
 
 accepter et établir les connexions des clients
--
-client TCP
 
-créer un socket et se connecter à l'IP du serveur sur le port 6667
--
-socket
+1 seul socket qui sert juste à faire "listen"
 
-un socket réseau est définie par
-(IP locale, Port local, IP distante, Port distant, Protocole)
+quand un client arrive, le serveur accepte la connexion, ce qui crée un nouveau socket indépendant dédié à ce client. le socket principal (listen) reste en attente pour d'autres clients. côté client, chaque client a son propre socket.
+-
+un socket réseau est définie par :
+IP locale + Port local, IP distante + Port distant, Protocole
 
 exemple :
 [Client : 192.168.1.25:49152]
 <- TCP ->
 [Serveur : 192.168.1.10:6667]
-
-
-côté serveur, on a un socket qui sert à faire listen.
-quand un client frappe à la porte, le serveur accepte la connexion, ce qui crée un nouveau socket indépendant dédié à ce client. le socket principal (listen) reste en attente pour d'autres clients. côté client, chaque client à son propre socket indépendant.
 -
 #include <arpa/inet.h>
 pour tout ce qui est socket
@@ -162,26 +152,109 @@ la fonction accept
 
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 
+on lui donne :
+● le socket d'écoute
+● une structure vide qui contiendra la sockaddr du client qui a été accepté (+ sa taille). si on a pas besoin de savoir ça, on peut mettre null (et 0)
 
-voir : https://chatgpt.com/c/68b15fc4-18f8-8321-9e5d-28369c8e1ddc
+elle bloque le programme. elle attend des clients. elle prend le premier client de la file d'attente et crée un nouveau socket qui servira à dialoguer avec lui (sans toucher au socket d'écoute). elle rend le fd du nouveau socket.
+
+on peut utiliser le fd du socket client pour recevoir des messages (avec la fonction read) et envoyer des messages (avec la fonction write)
+
+exemple simple : traiter un client à la fois : boucle infinie qui fait :
+● accept
+● traitements avec le fd du socket client
+● close le fd du socket client
+-
+1 socket TCP => 2 buffers gérés par le noyau :
+● send buffer (= tampon d'envoi)
+● recv buffer (= tampon de réception)
+-
+read <-> recv → "receive"
+write <-> send
+
+ils sont tous bloquants de base, sauf si le fd est en mode non bloquant globalement (avec fnctl)
+
+recv et send sont des versions spécialisées de write et read adaptées aux sockets. ils sont recommandés et offre un paramètre supplémentaire (int) pour ajouter des flags.
+
+exemples de flags pour recv :
+● MSG_PEEK : regarder les données sans les consommer. la prochaine lecture de recv retournera les mêmes données. utile pour voir si un message est complet avant de le lire vraiment.
+● MSG_WAITALL : attendre que le tampon soit complété selon la taille exact du buffer qu'on donne en paramètre (ou que la connexion se ferme). utile quand on veut exactement N octets.
+● MSG_DONTWAIT : rendre l'appel non bloquant (meme si le socket est en mode bloquant).
+
+recv en mode non bloquant :
+si aucune donnée n'est dispo via le fd, renvoie -1 et errno = EAGAIN ou EWOULDBLOCK (selon le système)
+
+pour send :
+● MSG_DONTWAIT : pareil
+● MSG_NOSIGNAL : n'envoie pas SIGPIPE si on tente d'écrire sur un socket fermé
+● MSG_MORE : indiquer au noyau qu'il y aura encore d'autre envois après. c'est une question d'optimisation, pour regrouper les envoies fragmentés d'un gros message
+
+quand on utilise send / write sur un socket TCP, les données passent par un tampon kernel appelé le "send buffer". c'est ça que TCP traite (découpage en segments, gérer les accusés de réception, retransmission si besoin etc).
+si ce buffer est plein, de base, send attend (= se bloque) jusqu'à ce qu'il y ait de nouveau de la place dedans.
+
+send en mode non bloquant :
+si le buffer du kernel est plein, on renvoie -1 et errno = EAGAIN ou EWOULDBLOCK (selon le système)
+-
+fonction connect
+
+plutôt pour le client IRC. ça permet de connecter le socket du client à celui du serveur.
+
+int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+-
+commande nc
+
+→ "netcat"
+
+c’est un petit utilitaire en ligne de commande qui sait agir comme client ou serveur TCP / UDP
+
+exemples :
+● nc 127.0.0.1 6667
+● nc localhost 6667
+
+en gros, ça fait un connect puis :
+● tout ce qu'on tape dans le terminal est envoyé avec send
+● tout ce qui est envoyé aux clients par le serveur est affiché dans le terminal avec recv
+
+on peut aussi simuler un serveur avec l'option -l :
+nc -l 6667
+
+donc on peut faire un minichat entre deux terminaux :
+● serveur : nc localhost 6667 -l
+● client : nc localhost 6667
+-
+traiter plusieurs clients en parallèle
+
+on peut faire plusieurs processus mais c'est interdit pour nous
+
+mettre un socket en mode non-bloquant avec O_NONBLOCK avant de l'envoyer à :
+● accept + aucun client -> return EAGAIN
+● recv + pas de données reçues -> return EAGAIN
+● send + tampon d'envoi plein -> return EAGAIN
+
+on combine ça avec un [poll / select / epoll / kqueue] (selon l'OS)
+
+ça permet de savoir quand et quel descripteurs de fichiers sont prêts
+
+on lui donne la liste des fd des sockets
+
+on peut savoir si :
+● lire (<-> recv) sur un fd, si POLLIN est signalé
+● écrire (<-> send) sur un fd, si POLLOUT est signalé
+● il y a une erreur avec ce fd POLLERR/POLLHUP
+
+poll bloque jusqu'à ce qu'au moins un fd soit prêt (ou qu'un délait expire). comme ça, on ne fait accept que si le socket d'écoute est lisible ie il a POLLIN
 
 
-int client_fd = accept(sockfd, ...);
-accepter une connexion
-cote serveur
-
-connect(sockfd, ...);
-demander une connexion au serveur
-cote client
-
-send(sockfd, "Hello", 5, 0);
-envoyer des données
 
 
-une fois accepté, il y a communication bidirectionnelle via send() et recv()
+-
+questions
 
+● explique moi "address.sin_addr.s_addr = INADDR_ANY;". si je fais un serveur irc en local, je dois mettre l'adresse ip localhost ou bien c'est pareil ? plus restrictif ? moins restrictif ? c'est quoi la différence ?
 
-
-
+● explique moi ça :
+printf("Connexion acceptée d’un client avec IP %s et port %d\n",
+       inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
 
 

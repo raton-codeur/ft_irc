@@ -44,6 +44,7 @@ int main()
 		if (n < 0)
 			{perror("poll"); break;}
 
+
 		if (fds[0].revents & POLLIN)
 		{
 			int cfd = accept(lfd, NULL, NULL);
