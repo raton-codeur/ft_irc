@@ -16,12 +16,9 @@ voir les limites sur le password
 - gethostbyname
 - getaddrinfo
 - freeaddrinfo
-- inet_addr
-- inet_ntoa
+- 
 - signal
 - sigaction
 - lseek
 - fstat
-- fcntl (spécialement sur mac, pour write, pour rendre les fd non bloquants. seulement autorisé : fcntl(fd, F_SETFL, O_NONBLOCK);)
-- poll / select / kqueue / epoll (1 seul appel autorisé et nécessaire)
 

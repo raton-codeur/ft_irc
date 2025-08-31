@@ -1,0 +1,20 @@
+-
+traiter plusieurs clients en parallèle
+
+on pourrait faire plusieurs processus mais c'est interdit dans le sujet
+
+mettre le fd du socket listen en mode non-bloquant avec :
+fcntl(fd, F_SETFL, O_NONBLOCK);
+
+si on passe ce socket non bloquant à accept et qu'il n'y a pas de client à accepter dans la zone de backlog, il return tout de suite (au lieu d'attendre des clients)
+
+on combine ça avec un [poll / select / epoll / kqueue] (selon l'OS) :
+on lui donne la liste des fd des sockets et poll bloque jusqu'à ce qu'au moins un fd soit prêt (ou qu'un délait expire). comme ça, on ne fait accept que si le socket d'écoute est lisible (car alors le fd du socket listen est signalé comme POLLIN)
+
+ça permet de savoir quand et quel descripteurs de fichiers sont prêts
+
+on peut :
+● lire (<-> recv) sur un fd, si POLLIN est signalé
+● écrire (<-> send) sur un fd, si POLLOUT est signalé
+● savoir s'il y a une erreur avec le fd avec POLLERR/POLLHUP
+-

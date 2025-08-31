@@ -1,0 +1,76 @@
+-
+struct sockaddr_in {
+    sa_family_t    sin_family; // la famille d'adresses (exemple : AF_INET)
+    in_port_t      sin_port;   // port
+    struct in_addr sin_addr;   // adresse
+    unsigned char  sin_zero[8]; // padding (pas utilisé)
+};
+struct in_addr {
+    uint32_t s_addr;  // adresse IPv4 (ex : 127.0.0.1)
+};
+
+"sockaddr" → socket address
+"in" → internet
+
+c'est une structure qui permet de stocker une adresse IPv4
+
+il existe une structure similaire pour l'IPv6 qui s'appelle sockaddr_in6
+
+on peut la caster en (struct sockaddr*), une structure plus générique, pour l'envoyer à bind, connect, accept, sendto, etc
+
+
+pour remplir sin_port, on doit utiliser : htons(8080)
+"htons" → host to network short
+par "network", on veut parler du "network byte order", c'est-à-dire, l'ordre des octets attendu sur le réseau. en effet, la majorité des PC sont en mode little endian (ils stockent les nombres à l'envers) alors qu'internet utilise du big endian
+short → sur 2 octets
+si une machine est déjà en big endian, htons ne change pas le nombre
+
+il existe aussi htonl pour "long" <-> 32 bits. ça permet de convertir les adresses IPv4 little endian en adresse IPv4 big endian.
+
+exemple :
+addr.sin_port = htons(8080);
+addr.sin_addr.s_addr = htonl(0x7F000001); // 127.0.0.1
+
+à l'inverse, on a ntohs et ntohl pour passer du big endian à l'ordre de l'hote.
+
+
+pour remplir sin_addr on peut utiliser inet_addr :
+addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+c'est limité à l'IPv4 est il n'y a pas de code d'erreur possible
+en théorie, c'est obsolète
+pas besoin de passer par htonl
+
+on peut passer d'une adresse IPv4 à une chaine avec inet_ntoa :
+printf("IP: %s\n", inet_ntoa(addr.sin_addr));
+inet_ntoa → "Internet network to ASCII"
+pareil, normalement c'est obsolète, c'est que pour le IPv4 et pas de code d'erreur possible
+-
+les alternatives modernes à inet_addr et inet_ntoa
+(juste pour la culture)
+
+"presentation format"
+c'est le format d'une adresse IP dans une string (genre "127.0.0.1")
+
+"network format"
+c'est une adresse IP binaire (en network byte order)
+
+
+inet_pton → "Internet presentation to network"
+int inet_pton(int af, const char *src, void *dst);
+
+inet_ntop → "Internet network to presentation"
+const char *inet_ntop(int af, const void *src, char *dst, socklen_t size);
+
+exemple :
+inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+char buffer[INET_ADDRSTRLEN];
+inet_ntop(AF_INET, &addr.sin_addr, buffer, sizeof(buffer))
+
+
+autre version un tout petit peu mieux de inet_addr :
+inet_aton → "Internet ASCII to network"
+on écrit le résultat dans une chaine pour pouvoir renvoyer 0 si la conversion est invalide
+
+exemple :
+inet_aton("127.0.0.1", &addr.sin_addr)
+-

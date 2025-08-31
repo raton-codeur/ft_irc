@@ -1,0 +1,30 @@
+-
+les sockets
+
+
+dans le code, quand on crée un socket, on obtient un file descriptor. ça représente une ressource noyau avec des caractéristiques comme : la famille d'adresses, le protocole, les buffers d'envoi et de réception, l'état de la connexion, etc.
+
+( le socket créé ) c'est l'une des 2 extrémités d'une communication. quand on connecte 2 sockets entre eux, par exemple le socket d'un client et le socket d'un serveur via internet, il y a une communication TCP qui se fait entre les 2.
+
+3-way handshake
+c'est comme ça que commence une connexion TCP
+● le client envoie un paquet avec le flag SYN (→ synchronisation de séquence)
+● le serveur répond avec SYN + ACK
+● le client confirme avec ACK
+
+TCP est un protocole de transmission de données. une fois que la connexion est établie, les données sont envoyées en petits paquets, réassemblés dans le bon ordre, retransmis en cas de problème, vérifiés à l'arrivée.
+
+
+#include <arpa/inet.h>
+pour tout ce qui est socket
+
+
+pour IRC, une fois la communication établie entre un socket et son homologue [client / serveur], on a un fd de socket avec lequel on peut [read / write] comme pour un fichier
+
+en interne, on a 2 buffers gérés par le noyau qui sont liés à chaque socket :
+● send buffer (= tampon d'envoi)
+● recv buffer (= tampon de réception)
+
+le send buffer de l'un est envoyé au receive buffer de l'autre, via TCP, en symétrie.
+
+par exemple, le serveur et le client peuvent écrire (éventuellement en même temps) un message dans leur send buffer respectif, les données s'envoient, et ils pourront alors lire chacun le message de l'autre dans leur receive buffer respectif.

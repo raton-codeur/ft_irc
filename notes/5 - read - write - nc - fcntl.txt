@@ -1,0 +1,91 @@
+-
+les fonctions recv et send
+
+● recv → "receive" <-> read
+● send <-> write
+
+ils sont tous bloquants de base, sauf si le fd est en mode non bloquant globalement (avec fnctl)
+
+recv et send sont des versions spécialisées de read et write adaptées aux sockets. ils sont recommandés et offrent un paramètre supplémentaire (int) pour ajouter des flags.
+
+exemples de flags pour recv :
+● MSG_PEEK : regarder les données sans les consommer. la prochaine lecture de recv retournera les mêmes données. utile pour voir si un message est complet avant de le lire vraiment.
+● MSG_WAITALL : attendre que le tampon soit complété selon la taille exact du buffer qu'on donne en paramètre (ou que la connexion se ferme). utile quand on veut exactement N octets.
+● MSG_DONTWAIT : rendre l'appel non bloquant (meme si le socket est en mode bloquant).
+
+recv en mode non bloquant :
+si aucune donnée n'est dispo via le fd (c'est-à-dire que le "recv buffer" est vide), renvoie -1 et errno = EAGAIN ou EWOULDBLOCK (selon le système)
+
+pour send :
+● MSG_DONTWAIT : pareil
+● MSG_NOSIGNAL : n'envoie pas SIGPIPE si on tente d'écrire sur un socket fermé
+● MSG_MORE : indiquer au noyau qu'il y aura encore d'autre envois après. c'est une question d'optimisation, pour regrouper les envoies fragmentés d'un gros message
+
+quand on utilise send / write sur un socket TCP, les données passent par un buffer d'envoi. c'est ce buffer que l'ordi essaie de transmettre via TCP. parfois, ça prend un peu de temps et le buffer sature. par défaut, send attend (= se bloque) jusqu'à ce qu'il y ait de nouveau de la place qui se libère pour écrire ce qu'on veut envoyer dans le buffer.
+
+send en mode non bloquant :
+si le send buffer est plein, on renvoie -1 et errno = EAGAIN ou EWOULDBLOCK (selon le système)
+-
+
+
+
+
+
+
+
+
+
+-
+la commande nc
+
+→ "netcat"
+
+c’est un petit utilitaire en ligne de commande qui peut agir comme client ou serveur TCP / UDP
+
+exemples :
+● nc 127.0.0.1 6667
+● nc localhost 6667
+
+en gros, ça fait un connect puis :
+● tout ce qu'on tape dans le terminal est envoyé avec send
+● tout ce qui est reçu du serveur est affiché dans le terminal avec recv
+
+on peut aussi simuler un serveur avec l'option -l :
+nc -l 6667
+
+donc on peut faire un minichat entre deux terminaux :
+● serveur : nc localhost 6667 -l
+● client : nc localhost 6667
+-
+
+
+
+
+
+
+
+
+-
+la fonction fcntl
+
+→ "file control"
+
+● premier argument : un fd
+● 2e argument : la commande qu'on veut faire sur le fd
+● autres arguments : les arguments de la commande
+
+exemples de commande :
+● F_GETFL : lire les flags du fd
+● F_SETFL : modifier les flags du fd
+● F_SETLK, F_SETLKW, F_GETLK... : c'est un peu comme des mutex, on bloque une partie d'un fichier pour éviter que deux processus écrivent dessus en même temps
+● F_DUPFD : dupliquer un fd
+
+les flags des fd ce sont toutes les constantes qui commencent par O_ et qu'on a déjà utilisé avec open notamment
+
+exemples de flags de fd :
+● O_NONBLOCK : rendre l'appel par défaut des fonctions comme [accept / read / write] non bloquant avec ce fd
+● O_APPEND : écrire à la fin du fichier
+● O_RDONLY, O_WRONLY, O_CREAT, O_TRUNC : pour donner le mode d'ouverture d'un fichier avec open. on ne peut plus les changer après l'ouverture.
+
+on peut aussi déclarer un socket non bloquant à la création (uniquement sur linux) avec : socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+-

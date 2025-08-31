@@ -1,0 +1,16 @@
+
+
+
+
+
+
+
+
+-
+questions
+
+
+● c'est quoi la pile TCP/IP, comment ça marche ?
+
+● explique moi "address.sin_addr.s_addr = INADDR_ANY;". si je fais un serveur irc en local, je dois mettre l'adresse ip localhost ou bien c'est pareil ? plus restrictif ? moins restrictif ? c'est quoi la différence ?
+
