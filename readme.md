@@ -10,13 +10,6 @@ voir les limites sur le password
 
 # fonctions à creuser
 
-- setsockopt
-- getsockname
-- getprotobyname
-- gethostbyname
-- getaddrinfo
-- freeaddrinfo
-- 
 - signal
 - sigaction
 - lseek
