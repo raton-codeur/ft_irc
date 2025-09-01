@@ -36,17 +36,22 @@ addr.sin_addr.s_addr = htonl(0x7F000001); // 127.0.0.1
 
 pour remplir sin_addr on peut utiliser inet_addr :
 addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-c'est limité à l'IPv4 est il n'y a pas de code d'erreur possible
+c'est limité à l'IPv4 et il n'y a pas de code d'erreur possible
 en théorie, c'est obsolète
-pas besoin de passer par htonl
+donc pas besoin d'utiliser htonl
 
 on peut passer d'une adresse IPv4 à une chaine avec inet_ntoa :
 printf("IP: %s\n", inet_ntoa(addr.sin_addr));
 inet_ntoa → "Internet network to ASCII"
 pareil, normalement c'est obsolète, c'est que pour le IPv4 et pas de code d'erreur possible
 -
+
+
+
+-
 les alternatives modernes à inet_addr et inet_ntoa
 (juste pour la culture)
+
 
 "presentation format"
 c'est le format d'une adresse IP dans une string (genre "127.0.0.1")
@@ -61,13 +66,15 @@ int inet_pton(int af, const char *src, void *dst);
 inet_ntop → "Internet network to presentation"
 const char *inet_ntop(int af, const void *src, char *dst, socklen_t size);
 
+af -> "adress family"
+
 exemple :
 inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
 char buffer[INET_ADDRSTRLEN];
 inet_ntop(AF_INET, &addr.sin_addr, buffer, sizeof(buffer))
 
 
-autre version un tout petit peu mieux de inet_addr :
+autre façon un tout petit peu mieux que inet_addr :
 inet_aton → "Internet ASCII to network"
 on écrit le résultat dans une chaine pour pouvoir renvoyer 0 si la conversion est invalide
 

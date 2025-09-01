@@ -12,6 +12,8 @@ c'est comme ça que commence une connexion TCP
 ● le serveur répond avec SYN + ACK
 ● le client confirme avec ACK
 
+ACK → "Acknowledgment"
+
 TCP est un protocole de transmission de données. une fois que la connexion est établie, les données sont envoyées en petits paquets, réassemblés dans le bon ordre, retransmis en cas de problème, vérifiés à l'arrivée.
 
 

@@ -4,39 +4,42 @@ les sockets du serveur IRC
 1) créer un socket TCP
 2) associer le socket à l'IP du serveur + port 6667
 3) passer le socket en mode "écoute" (sur le port 6667)
-4) accepter et établir les connexions des clients
+4) accepter et établir les connexions avec les clients
 
-on a 1 seul socket qui sert à faire "listen"
+on a 1 seul socket qui sert à faire "listen". c'est un socket particulier qui sert qu'à ça.
 
-quand un client arrive, le serveur accepte la connexion, ce qui crée un nouveau socket indépendant dédié à ce client. le socket principal (listen) reste en attente pour d'autres clients. côté client, chaque client a son propre socket.
+quand un client arrive, le serveur accepte la connexion, ce qui crée un nouveau socket indépendant dédié à ce client. le socket principal du serveur reste en mode listen pour détecter les autres clients potentiels qui arrivent.
+
+côté client, chaque client a 1 seul socket qui sert à communiquer avec le serveur.
 -
 créer un socket
 
 int sockfd = socket(int domain, int type, int protocol);
 
-le paramètre domain
-identifie les familles d'adresses que le socket va utiliser
-AF_INET → IPv4
-AF_INET6 → IPv6
-AF_UNIX → socket unix (communication entre processus sur la même machine, pas d’IP)
+le paramètre domain.
+identifie les familles d'adresses que le socket va utiliser.
+● AF_INET → IPv4
+● AF_INET6 → IPv6
+● AF_UNIX → socket unix (communication entre processus sur la même machine, pas d’IP)
 on peut aussi mettre PF_INET et PF_INET6, c’est presque pareil
 historiquement, PF_ = protocol family, AF_ = address family
 
-le paramètre type de communication
-SOCK_STREAM pour TCP (on garantit l'arrivée et l'ordre)
-SOCK_DGRAM pour UDP. c'est plus rapide mais la connexion n'est pas fiable comme avec TCP
-SOCK_RAW. c'est rare, réservé aux programmes systèmes comme ping. on accède directement aux paquets réseau
+le paramètre type de communication.
+● SOCK_STREAM pour TCP (on garantit l'arrivée et l'ordre)
+● SOCK_DGRAM pour UDP. c'est plus rapide mais la transmission n'est pas fiable comme avec TCP.
+● SOCK_RAW. c'est rare, réservé aux programmes systèmes comme ping. on accède directement aux paquets réseau
 
-le paramètre protocol
-ça précise le protocole qu'on utilise selon les deux premiers paramètres
+le paramètre protocol.
+ça précise le protocole qu'on utilise selon les deux premiers paramètres.
 généralement on met 0 pour choisir le protocole par défaut
 
 nous on fera : int sockfd = socket(AF_INET, SOCK_STREAM, 0);
--
+
+si on faisait un client IRC on devrait créer un socket selon le même principe
 -
 la fonction bind
 
-"attacher" un socket à une sockaddr
+associer un socket à une sockaddr
 
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 
@@ -51,6 +54,10 @@ int listen(int sockfd, int backlog);
 backlog c'est le nombre max de connexions en attente que le noyau peut gérer. s'il y a plus de clients qui arrivent en même temps, certains recevront une erreur (ECONNREFUSED).
 
 métaphore d'une salle d'attente entre "listen" et "accept". backlog c'est la capacité max qu'on donne à cette salle d'attente. dès qu'un client est traité avec accept, il quitte la zone.
+
+en fait, le noyau maintient 2 files pour son socket listen :
+● une file des connexion semi ouvertes (le serveur attend le dernier ACK du client)
+● une file des connexions établies (les sockets clients qui ont passés le handshake), de taille "backlog". c'est cette file que s'occupe de traiter la fonction suivante
 -
 la fonction accept
 
@@ -62,18 +69,19 @@ on lui donne :
 
 elle bloque le programme. elle attend des clients. elle prend le premier client de la file d'attente et crée un nouveau socket qui servira à dialoguer avec lui (sans toucher au socket d'écoute). elle renvoie le fd du nouveau socket créé.
 
-exemple simple : traiter un client à la fois : boucle infinie qui fait :
+exemple simple : traiter 1 client à la fois. c'est une boucle infinie qui fait :
 ● accept
 ● traitements avec le fd du socket client
-● close le fd du socket client
+● close le fd du socket client.
+dans cet exemple, le serveur est bloquant.
 -
 la fonction connect
 
 c'est pour le client IRC. ça permet de se connecter au socket du serveur.
 
-● créer un socket vide. on obtient un fd qui servira à communiquer avec le serveur
-● connecter le socket à l'IP du serveur grâce à la fonction connect. on est bloqué (par défaut) par connect tant que la connexion n'est pas établie
-● on peut utiliser le fd de la socket pour communiquer
+1) créer un socket vide. on obtient un fd qui servira à communiquer avec le serveur
+2) connecter le socket à l'IP du serveur grâce à la fonction connect. on est bloqué (par défaut) par connect tant que la connexion n'est pas établie
+3) on peut utiliser le fd de la socket pour communiquer
 
 exemple :
 int sockfd_serv = socket(AF_INET, SOCK_STREAM, 0);

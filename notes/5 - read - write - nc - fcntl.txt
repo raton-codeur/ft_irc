@@ -46,18 +46,19 @@ exemples :
 ● nc 127.0.0.1 6667
 ● nc localhost 6667
 
-en gros, ça fait un connect puis :
-● tout ce qu'on tape dans le terminal est envoyé avec send
-● tout ce qui est reçu du serveur est affiché dans le terminal avec recv
+en gros, ça fait un socket, ça le connect sur l'adresse et le port donnés, puis :
+● tout ce qu'on tape dans le terminal est écrit dans le buffer d'envoi du socket (donc envoyé au serveur)
+● tout ce qui est reçu dans le buffer de réception du socket (donc envoyé par le serveur) est affiché dans le terminal
 
-on peut aussi simuler un serveur avec l'option -l :
+on peut aussi simuler un serveur TCP avec l'option -l :
 nc -l 6667
+
+ça crée un socket, ça le passe en mode listen, et ça le remplace par un socket client une fois qu'un client est accepté (donc pas plus d'un client possible)
 
 donc on peut faire un minichat entre deux terminaux :
 ● serveur : nc localhost 6667 -l
 ● client : nc localhost 6667
 -
-
 
 
 
@@ -74,10 +75,10 @@ la fonction fcntl
 ● 2e argument : la commande qu'on veut faire sur le fd
 ● autres arguments : les arguments de la commande
 
-exemples de commande :
+exemples de commandes :
 ● F_GETFL : lire les flags du fd
 ● F_SETFL : modifier les flags du fd
-● F_SETLK, F_SETLKW, F_GETLK... : c'est un peu comme des mutex, on bloque une partie d'un fichier pour éviter que deux processus écrivent dessus en même temps
+● F_SETLK, F_SETLKW, F_GETLK... : c'est un peu comme des mutex, on bloque une partie d'un fichier pour éviter que 2 processus écrivent dessus en même temps
 ● F_DUPFD : dupliquer un fd
 
 les flags des fd ce sont toutes les constantes qui commencent par O_ et qu'on a déjà utilisé avec open notamment
@@ -85,7 +86,14 @@ les flags des fd ce sont toutes les constantes qui commencent par O_ et qu'on a 
 exemples de flags de fd :
 ● O_NONBLOCK : rendre l'appel par défaut des fonctions comme [accept / read / write] non bloquant avec ce fd
 ● O_APPEND : écrire à la fin du fichier
-● O_RDONLY, O_WRONLY, O_CREAT, O_TRUNC : pour donner le mode d'ouverture d'un fichier avec open. on ne peut plus les changer après l'ouverture.
+● O_RDONLY, O_WRONLY, O_CREAT, O_TRUNC : pour donner le mode d'ouverture d'un fichier avec open. c'est spécifique à open car on ne peut plus les changer après l'ouverture.
 
 on peut aussi déclarer un socket non bloquant à la création (uniquement sur linux) avec : socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+
+mettre un fd de socket (notamment le socket qui est en mode listen) en mode non-bloquant globalement :
+fcntl(fd, F_SETFL, O_NONBLOCK);
+normalement, on rajoute ce flag en plus de ceux déjà présent dans le fd avec :
+int flags = fcntl(fd, F_GETFL, 0);
+fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+ou encore mieux : en vérifiant les codes d'erreur de fcntl à chaque fois. mais bon, nous, on va pas faire ça.
 -

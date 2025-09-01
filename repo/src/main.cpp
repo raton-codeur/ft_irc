@@ -14,25 +14,24 @@ using namespace std;
 
 int main()
 {
-    int lfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (lfd < 0)
+    int fd_listen = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd_listen < 0)
 		throw runtime_error("socket failed");
 
-	int yes = 1;
-	setsockopt(lfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+	fcntl(fd_listen, F_SETFL, O_NONBLOCK);
 
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(6667);
-    addr.sin_addr.s_addr = INADDR_ANY;
+    struct sockaddr_in addr_server;
+    addr_server.sin_family = AF_INET;
+    addr_server.sin_port = htons(6667);
+    addr_server.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(lfd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+    if (bind(fd_listen, (struct sockaddr*)&addr_server, sizeof(addr_server)) < 0)
 		throw runtime_error("bind failed");
-    if (listen(lfd, 5) < 0)
+    if (listen(fd_listen, 5) < 0)
 		throw runtime_error("listen failed");
 
 	struct pollfd fds[2];
-	fds[0].fd = lfd;
+	fds[0].fd = fd_listen;
 	fds[0].events = POLLIN;
 	fds[1].fd = -1;
 
@@ -46,10 +45,10 @@ int main()
 
 		if (fds[0].revents & POLLIN)
 		{
-			int cfd = accept(lfd, NULL, NULL);
-			if (cfd >= 0)
+			int fd_client = accept(fd_listen, NULL, NULL);
+			if (fd_client >= 0)
 			{
-				fds[1].fd = cfd;
+				fds[1].fd = fd_client;
 				fds[1].events = POLLIN;
 				printf("client accepté\n");
 			}
@@ -73,6 +72,6 @@ int main()
         }
     }
 
-    close(lfd);
+    close(fd_listen);
     return 0;
 }
