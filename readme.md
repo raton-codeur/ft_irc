@@ -10,8 +10,5 @@ voir les limites sur le password
 
 # fonctions à creuser
 
-- signal
-- sigaction
 - lseek
 - fstat
-

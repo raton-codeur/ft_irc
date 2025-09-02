@@ -1,0 +1,85 @@
+-
+rappels sur la fonction signal
+
+#include <csignal>
+
+typedef void (*sighandler_t)(int); // ou : using sighandler_t = void(*)(int);
+sighandler_t signal(int signum, sighandler_t handler);
+
+exemples de signum utiles :
+● SIGINT
+● SIGTERM
+● SIGABRT
+● SIGQUIT
+● SIGHUP
+
+le handler c'est une fonction qui sera appelée quand le signal survient. on peut utiliser :
+● SIG_IGN pour ignorer le signal
+● SIG_DFL pour utiliser le traitant par défaut
+● une fonction personnalisée
+
+elle renvoie l'ancien handler utilisé (utile notamment si on veut le restaurer après).
+
+on est très restreint dans le code du handler. on n'a que le droit d'utiliser des fonctions "async-signal-safe" :
+● pas de new, malloc, ...
+● pas de std::cout, std::cerr, printf
+● pas d'exception
+● pas de mutex
+● pas de exit()
+on peut :
+● écrire avec write
+● utiliser kill
+● faire std::_Exit pour sortir comme un malpropre
+● changer la valeur d'une variable (booléenne) de type "volatile std::sig_atomic_t". c'est un petit drapeau qu'on pourra checker à un endroit safe dans le code pour exit proprement. exemple :
+	volatile std::sig_atomic_t stop_flag = 0;
+	void handler(int) {stop_flag = 1;}
+● chainer avec un autre handler avec std::raise(signum)
+
+il vaut toujours mieux utiliser sigaction qui est plus précis !
+-
+rappels sur sigaction
+
+c'est comme signal mais avec une API POSIX robuste
+
+on peut choisir un masque pour définir les signaux qui seront bloqués pendant le handler
+
+on peut ajouter des flags comme :
+● SA_RESTART. ça relance automatiquement l'appel d'une fonction interrompue comme read, accept, ... c'est pratique pour les signaux qui ne doivent pas arrêter le programme, pour pas avoir à relancer la fonction à la main en checkant errno == EINTR. nous, je pense pas qu'on l'utilisera.
+● SA_SIGINFO
+● SA_NODEFER = SA_NOMASK. ça n'ajoute pas le signal courant au masque des signaux qui sont normalement bloqués pendant l'exécution du handler. en gros, le même signal pourra réentrer et lancer de nouveau le handler qui est en cours. c'est dangereux.
+● SA_RESETHAND pour réinitialiser le handler par défaut (-> SIG_DFL)
+
+
+#include <signal.h>
+
+int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact);
+
+on doit remplir et lui passer une structure :
+struct sigaction {
+    void     (*sa_handler)(int);             // handler simple (1 argument)
+    void     (*sa_sigaction)(int, siginfo_t*, void*); // handler étendu (3 args)
+    sigset_t  sa_mask;                       // signaux à bloquer pendant le handler
+    int       sa_flags;                      // flags (SA_*)
+};
+
+utiliser soit :
+● sa_handler
+● sa_sigaction + flag SA_SIGINFO
+
+si on utilise pas de flag en particulier, on peut mettre sa_flags à 0
+
+pour une structure "struct sigaction sa;", on met le sa_mask par défaut avec :
+sigemptyset(&sa.sa_mask);
+ça met juste le signal de sa dans le masque des signaux du handler.
+ensuite, pour ajouter explicitement un signal comme SIGINT et SIGTERM au masque on fait :
+sigaddset(&sa, SIGINT);
+sigaddset(&sa, SIGTERM);
+
+
+donc, pour mettre un handler basique ("f") à SIGINT, on devra faire :
+struct sigaction sa;
+sa.sa_handler = f;
+sigemptyset(&sa.sa_mask);
+sa.sa_flags = 0;
+if (sigaction(SIGINT,  &sa, NULL) == -1) → perror("sigaction");
+-

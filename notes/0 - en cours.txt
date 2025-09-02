@@ -1,17 +1,5 @@
-
-
-
-
 -
-rappels sur la fonction signal
 
-#include <csignal>
 
-typedef void (*sighandler_t)(int);
-sighandler_t signal(int sig, sighandler_t handler);
-
-dans sig : SIGINT, SIGQUIT, ...
-
-le handler c'est une fonction qui sera appelée quand le signal survient
 
 
