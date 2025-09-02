@@ -21,7 +21,7 @@ pour send :
 ● MSG_NOSIGNAL : n'envoie pas SIGPIPE si on tente d'écrire sur un socket fermé
 ● MSG_MORE : indiquer au noyau qu'il y aura encore d'autre envois après. c'est une question d'optimisation, pour regrouper les envoies fragmentés d'un gros message
 
-quand on utilise send / write sur un socket TCP, les données passent par un buffer d'envoi. c'est ce buffer que l'ordi essaie de transmettre via TCP. parfois, ça prend un peu de temps et le buffer sature. par défaut, send attend (= se bloque) jusqu'à ce qu'il y ait de nouveau de la place qui se libère pour écrire ce qu'on veut envoyer dans le buffer.
+quand on utilise send (ou write) sur un socket TCP, les données passent par un buffer d'envoi. c'est ce buffer que l'ordi essaie de transmettre via TCP. parfois, ça prend un peu de temps et le buffer sature. par défaut, send attend (= se bloque) jusqu'à ce qu'il y ait de nouveau de la place qui se libère pour écrire ce qu'on veut envoyer dans le buffer.
 
 send en mode non bloquant :
 si le send buffer est plein, on renvoie -1 et errno = EAGAIN ou EWOULDBLOCK (selon le système)
@@ -89,11 +89,13 @@ exemples de flags de fd :
 ● O_RDONLY, O_WRONLY, O_CREAT, O_TRUNC : pour donner le mode d'ouverture d'un fichier avec open. c'est spécifique à open car on ne peut plus les changer après l'ouverture.
 
 on peut aussi déclarer un socket non bloquant à la création (uniquement sur linux) avec : socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+on est pas obligé donc on va pas le faire pour que ça marche aussi sur mac.
 
 mettre un fd de socket (notamment le socket qui est en mode listen) en mode non-bloquant globalement :
 fcntl(fd, F_SETFL, O_NONBLOCK);
 normalement, on rajoute ce flag en plus de ceux déjà présent dans le fd avec :
 int flags = fcntl(fd, F_GETFL, 0);
 fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-ou encore mieux : en vérifiant les codes d'erreur de fcntl à chaque fois. mais bon, nous, on va pas faire ça.
+ou encore mieux : en vérifiant les codes d'erreur de fcntl à chaque fois.
+mais bon, nous, on va juste utiliser F_SETFL et O_NONBLOCK.
 -

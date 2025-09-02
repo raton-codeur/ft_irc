@@ -46,13 +46,13 @@ inet_ntoa → "Internet network to ASCII"
 pareil, normalement c'est obsolète, c'est que pour le IPv4 et pas de code d'erreur possible
 
 
-on peut aussi mettre INADDR_ANY comme adresse IP du serveur.
+nous, on ont doit mettre INADDR_ANY comme adresse IP du serveur.
 addr.sin_addr.s_addr = INADDR_ANY;
 c'est une constante qui correspond à l'adresse 0.0.0.0.
 ça permet d'écouter sur toutes les interfaces réseau de la machine, toutes les cartes réseaux, notamment sur :
 ● localhost (= loopback = 127.0.0.1)
 ● le réseau local (192.168.x.x).
-comme c'est moins restrictif que 127.0.0.1, je pense pas qu'on va l'utiliser.
+donc c'est moins restrictif que 127.0.0.1.
 -
 
 

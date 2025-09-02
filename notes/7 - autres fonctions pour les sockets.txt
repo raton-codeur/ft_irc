@@ -1,0 +1,159 @@
+-
+la fonction setsockopt
+
+→ "set socket option"
+
+configurer un socket
+
+int setsockopt(int sockfd, int level, int option_name, const void* option_value, socklen_t option_len);
+
+le paramètre level.
+pour préciser le niveau du socket sur lequel on veut appliquer des options. notamment :
+● SOL_SOCKET pour les options générales
+● IPPROTO_TCP / IPPROTO_IP, pour des options spécifiques aux protocoles TCP/IP
+
+le paramètre option_name.
+le nom de l'option. exemples :
+● SO_REUSEADDR
+● SO_KEEPALIVE
+
+le paramètre option_value.
+c'est un pointeur vers la valeur (souvent un int) qu'on veut donner pour l'option.
+
+le paramètre option_len.
+c'est la taille de la valeur précédente, donc en général : sizeof(int)
+
+
+usage pratique : réutiliser immédiatement le port quand on kill le serveur au lieu d'attendre que le système libère la socket. comme ça, on est sûr que le serveur pourra redémarrer rapidement sans l'erreur "bind: Address already in use". à voir si on en a vraiment besoin.
+
+int yes = 1;
+setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+
+et si setsockopt échoue :
+perror("setsockopt(SO_REUSEADDR) failed");
+
+
+autre option utile : SO_KEEPALIVE : demande au kernel de vérifier périodiquement si la connexion est toujours vivante
+-
+la fonction getsockname
+
+→ "get socket name"
+
+int getsockname(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+
+on lui donne un fd de soquet et elle nous "renvoie" adrr (et addrlen)
+
+à l'appel, on met la taille de notre structure et le kernel nous écrit la taille effectivement utilisée
+
+renvoie un code d'erreur et utilise errno
+
+normalement, on en aura pas besoin
+-
+la fonction getprotobyname
+
+→ "get protocol by name"
+
+retrouver le numéro de protocole à partir d'une string
+
+exemple : "tcp" a le numéro 6, "udp" a le numéro 17
+
+dans netdb.h
+
+struct protoent *getprotobyname(const char *name);
+
+la structure renvoyée est de la forme :
+struct protoent {
+    char  *p_name;     // nom officiel du protocole ("tcp")
+    char **p_aliases;  // liste de noms alternatifs
+    int    p_proto;    // numéro du protocole (ex: 6 pour TCP)
+};
+
+quand on fait "socket(AF_INET, SOCK_STREAM, 0)", le 0 indique qu'on laisse le kernel choisir le protocole par défaut cohérent avec le type passé (SOCK_STREAM → TCP, SOCK_DGRAM → UDP).
+
+pour être très explicite, on pourrait faire :
+
+struct protoent *proto = getprotobyname("tcp");
+int sockfd = socket(AF_INET, SOCK_STREAM, proto->p_proto);
+
+bref, on l'utilisera pas
+-
+la fonction gethostbyname
+
+→ "get host by name"
+
+retrouver une adresse IP à partir d'un nom d'hôte (DNS ou hostname)
+
+par exemple : irc.libera.chat -> 185.31.40.139
+
+dans netdb.h
+
+struct hostent *gethostbyname(const char *name);
+
+exemples de noms :
+● localhost
+● exemple.com
+● local.irc
+
+la structure renvoyée est de la forme :
+struct hostent {
+    char  *h_name;       // nom officiel de l’hôte
+    char **h_aliases;    // liste des alias
+    int    h_addrtype;   // type d’adresse (AF_INET pour IPv4)
+    int    h_length;     // longueur de l’adresse
+    char **h_addr_list;  // tableau des adresses IP (au format binaire)
+};
+#define h_addr h_addr_list[0] // compatibilité avec du vieux code
+
+donc on peut lire [la / les] adresses de la structure obtenu avec :
+he = gethostbyname("example.com");
+/* checker si he est NULL */
+addr_list = (struct in_addr **)he->h_addr_list;
+for (int i = 0; addr_list[i] != NULL; i++)
+	printf("Adresse IP : %s\n", inet_ntoa(*addr_list[i]));
+
+c'est une fonction obsolète. il faut utiliser getaddrinfo à la place.
+-
+la fonction getaddrinfo
+
+int getaddrinfo(const char *node, const char *service, const struct addrinfo *hints, struct addrinfo **res);
+
+dans node, on met soit :
+● un nom d'hôte (comme exemple.com, localhost ou local.irc par exemple)
+● une adresse IP (comme "8.8.8.8")
+
+dans service, on peut mettre :
+● un service comme "http"
+● un port comme "6667"
+
+hints c'est une structure de la forme :
+struct addrinfo {
+    int              ai_flags;
+    int              ai_family;    // AF_INET, AF_INET6, AF_UNSPEC
+    int              ai_socktype;  // SOCK_STREAM, SOCK_DGRAM
+    int              ai_protocol;  // IPPROTO_TCP, IPPROTO_UDP
+    socklen_t        ai_addrlen;
+    struct sockaddr *ai_addr;      // adresse (struct sockaddr_in ou sockaddr_in6)
+    char            *ai_canonname; // nom canonique
+    struct addrinfo *ai_next;      // pointeur vers le suivant
+};
+
+dans res on aura la liste chaînée des résultats
+
+
+ça retourne 0 si tout va bien, sinon un code d’erreur (à passer à gai_strerror() pour un message)
+
+exemple :
+
+hints.ai_family = AF_UNSPEC;     // AF_INET (IPv4), AF_INET6 (IPv6), ou AF_UNSPEC = les deux
+hints.ai_socktype = SOCK_STREAM; // TCP
+getaddrinfo("example.com", "http", &hints, &res); // (checker la valeur de retour)
+for (p = res; p != NULL; p = p->ai_next)
+	lire l'adresse dans p->ai_addr->sin_addr;
+
+
+ensuite, il faut libérer le résultat avec la fonction freeaddrinfo (→ "free address info")
+void freeaddrinfo(struct addrinfo *res);
+
+
+je pense pas qu'on l'utilisera sauf peut-être pour donner l'adresse IP explicite du serveur sur lequel se connecter.
+-

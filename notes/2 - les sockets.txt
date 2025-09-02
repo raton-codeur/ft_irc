@@ -4,7 +4,7 @@ les sockets
 
 dans le code, quand on crée un socket, on obtient un file descriptor. ça représente une ressource noyau avec des caractéristiques comme : la famille d'adresses, le protocole, les buffers d'envoi et de réception, l'état de la connexion, etc.
 
-( le socket créé ) c'est l'une des 2 extrémités d'une communication. quand on connecte 2 sockets entre eux, par exemple le socket d'un client et le socket d'un serveur via internet, il y a une communication TCP qui se fait entre les 2.
+[ le socket créé ] c'est l'une des 2 extrémités d'une communication. quand on connecte 2 sockets entre eux, par exemple le socket d'un client et le socket d'un serveur via internet, il y a une communication TCP qui se fait entre les 2.
 
 3-way handshake
 c'est comme ça que commence une connexion TCP
