@@ -27,7 +27,7 @@ test : re
 	./$(NAME)
 
 nc :
-	nc localhost 6667
+	nc 127.0.0.1 6667
 
 d :
 	docker run --rm -it -v "$$PWD":/repo -w /repo -p 6667:6667 gcc

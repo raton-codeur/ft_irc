@@ -1,0 +1,59 @@
+-
+la commande ifconfig
+
+"interface configurator"
+
+voir et configurer les interfaces réseau de la machine
+
+option "-a" pour voir les interfaces inactives aussi
+
+en0 ou eth0
+interface pour Ethernet
+chez apple ça inclut aussi le wifi
+
+wlan0, wlx..., ...
+interface pour le Wi-Fi
+
+lo, lo0, ...
+interface loopback
+c'est une interface virtuelle
+
+les interfaces virtuelles sont créées par les VPN, les conteneurs, les VMs...
+
+on peut activer / désactiver une interface avec :
+sudo ifconfig eth0 [up / down]
+
+quand on a quelque chose comme "8049<UP,LOOPBACK,RUNNING,MULTICAST>", il faut savoir que la valeur numérique c'est la représentation numérique (encodage binaire) des options entre chevrons
+
+● inet → adresse IPv4
+● inet6 → adresse IPv6
+● netmask 0xff000000 → masque de sous-réseau en hexadécimal
+
+l'adresse IP qu'on voit avec "ifconfig en0 | grep inet" (ou autre nom d'interface wifi), c'est l'adresse de l'ordi au sein du réseau local (on dit que c'est l'adresse IP locale). elle sert à différencier les différentes machines au sein d'un même réseau local. elle commence forcément par 10.x.x.x, 192.168.x.x, ou de 172.16.x.x à 172.31.x.x. elle est attribuée par la box (= routeur) auquel on est connecté (maison, école, entreprise, hotel, etc.), généralement via DHCP (on peut aussi la configurer manuellement). donc elle peut facilement changer, selon le mode de connexion au routeur, si on change de réseau ou si le DHCP réattribue une autre adresse par exemple.
+
+ce que les sites qu'on visite peuvent voir, ce n'est pas l'adresse IP locale mais l'adresse IP publique, c'est-à-dire, l'adresse IP du routeur auquel on est connecté. on peut voir cette adresse quand on fait "curl ifconfig.me". cette adresse change quand on change de réseau ou même quand on redémarre la box.
+
+on peut définir une adresse locale nous même. par exemple :
+ifconfig en0 192.168.1.42
+
+sous linux, l'équivalent moderne de "ifconfig -a" c'est "ip a" (raccourci pour "ip addr show")
+
+sous linux, on peut voir toutes les adresses locales actives directement avec "hostname -I". sous mac, un équivalent serait "ifconfig | grep inet".
+-
+la commande netstat
+
+"network statistics"
+
+voir :
+● les connexions actives (TCP, UDP), sur quelles adresses et ports
+● les ports ouverts
+● les statistiques réseau (nombre de paquets envoyés, reçus, erreurs, ...)
+
+options :
+● "-a" : toutes les connexions et les ports en écoute
+● "-n" : adresses numériques (IP + port) (au lieu des noms symboliques)
+● "-s" : statistiques réseau
+
+pratique pour le projet :
+netstat -na | grep tcp4
+-
