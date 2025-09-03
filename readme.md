@@ -8,7 +8,5 @@ port doit être un nombre
 
 voir les limites sur le password
 
-# fonctions à creuser
 
-- lseek
-- fstat
+

@@ -1,0 +1,71 @@
+-
+les fonctions stat, lstat, fstat
+
+stat → "status"
+l → "link"
+f → "file"
+
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+int stat(const char *path, struct stat *buf);
+int lstat(const char *path, struct stat *buf);
+int fstat(int fd, struct stat *buf);
+
+
+premier argument :
+● pour stat : le chemin d'un fichier. si c'est un lien (symbolique), on analyse le fichier pointé (et pas le lien)
+● pour lstat : pareil que stat, mais si c'est un lien (symbolique), on analyse le lien (et pas le fichier pointé)
+● pour fstat : un file descriptor (fichier, socket, pipe, etc)
+
+en accédant aux métadonnées du premier argument, elles remplissent une structure passée en 2e argument :
+struct stat {
+    dev_t     st_dev;     // ID du périphérique contenant l’inode
+    ino_t     st_ino;     // Numéro d'inode
+    mode_t    st_mode;    // Type de fichier + permissions
+    nlink_t   st_nlink;   // Nombre de liens matériels
+    uid_t     st_uid;     // UID propriétaire (U = utilisateur)
+    gid_t     st_gid;     // GID propriétaire (G = groupe)
+    dev_t     st_rdev;    // ID périphérique (si spécial)
+    off_t     st_size;    // Taille en octets (si ordinaire)
+    blksize_t st_blksize; // Taille optimale de bloc pour I/O
+    blkcnt_t  st_blocks;  // Nombre de blocs alloués
+    struct timespec st_atim; // Dernier accès
+    struct timespec st_mtim; // Dernière modification
+    struct timespec st_ctim; // Dernier changement d’inode
+};
+
+renvoient -1 en cas d'erreur, 0 sinon
+
+appelons la structure passée "sb".
+
+sb.st_mode est un entier qui représente le type de fichier et ses permissions. on peut l'analyser avec des macros :
+● S_ISREG → "est un fichier ordinaire ?"
+● S_ISDIR → "est un répertoire ?"
+● S_ISCHR → "est un périphérique caractère ?"
+● S_ISBLK → "est un périphérique bloc ?"
+● S_ISFIFO → "est un FIFO / pipe nommé ?"
+● S_ISLNK → "est un lien symbolique ?"
+● S_ISSOCK → "est un socket ?"
+exemple :
+if (S_ISSOCK(sb.st_mode)) {blabla}
+
+pour checker les permissions, on peut filtrer les bits de sb._st_mode avec une ou plusieurs constantes. exemples :
+● sb.st_mode & S_IRUSR → lecture autorisée pour l’utilisateur propriétaire
+● sb.st_mode & (S_IWGRP | S_IXOTH) → écriture autorisée pour le groupe et exécution autorisée pour les autres
+plus précisément, ces constantes se construisent avec S_I + :
+● R pour read
+● W pour write
+● X pour execute
++ :
+● USR pour user
+● GRP pour group
+● OTH pour other
+pour les bits spéciaux, on a :
+● S_ISUID : set-user-ID (exécution avec les droits du propriétaire)
+● S_ISGID : set-group-ID (exécution avec les droits du groupe)
+● S_ISVTX : sticky bit (protéger les suppressions par d’autres utilisateurs)
+en vrai, ça marcherait aussi en octal mais c'est moins lisible et portable, donc à éviter. exemple :
+sb.st_mode & 0222 → écriture autorisée pour l'utilisateur, le groupe et les autres
