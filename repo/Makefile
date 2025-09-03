@@ -26,7 +26,10 @@ re : fclean all
 test : re
 	./$(NAME)
 
-client :
+nc :
 	nc localhost 6667
 
-.PHONY: all clean fclean re test client
+d :
+	docker run --rm -it -v "$$PWD":/repo -w /repo -p 6667:6667 gcc
+
+.PHONY: all clean fclean re test nc d
