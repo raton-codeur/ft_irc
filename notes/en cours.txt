@@ -1,3 +1,22 @@
+
+-
+
+https://chatgpt.com/c/68e908f9-70f0-8327-b9cd-2819d6987ef8
+
+
+
+
+
+
+-
+extension de nom de fichier
+
+.tpp ≈ .ipp, .inl, .impl
+
+"i" → "implementation"
+"in" → "inline" implementation-
+-
+
 -
 IRC
 

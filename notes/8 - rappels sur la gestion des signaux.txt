@@ -83,3 +83,17 @@ sigemptyset(&sa.sa_mask);
 sa.sa_flags = 0;
 if (sigaction(SIGINT,  &sa, NULL) == -1) → perror("sigaction");
 -
+
+
+-
+handler avec une variable booléenne "flag"
+
+si on veut modifier "flag" dans un handler, il faut le déclarer avec le type "volatile sig_atomic_t".
+
+sig_atomic_t est un type spécial défini dans signal.h qui garantit que les lectures / écritures sont atomiques, c'est-à-dire sûrs même en cas d'interruption (il peut y avoir des problèmes si on interrompt le programme pour modifier le flag alors que le flag était justement en cours de lecture / écriture).
+
+volatile empêche le compilateur d'otimiser la variable. en effet, ça peut arriver que le compilateur garde la valeur de flag en cache dans un registre et ne voit pas la mise à jour faite dans le handler dans le reste du programme.
+
+donc : volatile sig_atomic_t flag = 0;
+-
+

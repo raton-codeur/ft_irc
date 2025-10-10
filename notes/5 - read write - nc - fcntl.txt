@@ -32,9 +32,6 @@ si le send buffer est plein, on renvoie -1 et errno = EAGAIN ou EWOULDBLOCK (sel
 
 
 
-
-
-
 -
 la commande nc
 
@@ -59,8 +56,6 @@ donc on peut faire un minichat entre deux terminaux :
 ● serveur : nc localhost 6667 -l
 ● client : nc localhost 6667
 -
-
-
 
 
 

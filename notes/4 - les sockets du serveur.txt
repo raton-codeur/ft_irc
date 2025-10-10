@@ -71,7 +71,7 @@ exemple simple : traiter 1 client à la fois. c'est une boucle infinie qui fait 
 ● accept
 ● traitements avec le fd du socket client
 ● close le fd du socket client.
-dans cet exemple, si on utilise un socket non bloquant, le serveur est bloquant.
+dans cet exemple, de base, le serveur est bloquant.
 -
 la fonction connect
 

@@ -6,7 +6,7 @@ struct sockaddr_in {
     unsigned char  sin_zero[8]; // padding (pas utilisé)
 };
 struct in_addr {
-    uint32_t s_addr;  // adresse IPv4 (ex : 127.0.0.1)
+    uint32_t s_addr;  // adresse IPv4 (ex → 127.0.0.1)
 };
 
 "sockaddr" → socket address
