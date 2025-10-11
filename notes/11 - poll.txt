@@ -1,0 +1,47 @@
+-
+poll
+
+struct pollfd
+{
+	int fd; // le descripteur à surveiller
+	short events; // les évènements à surveiller
+	short revents; // les "returned events", la réponse de poll
+};
+
+dans events on peut mettre des drapeaux. les plus importants c'est POLLIN et POLLOUT. c'est des constante, donc des nombres. on peut surveiller POLLIN et POLLOUT en même temps par exemple avec : POLLIN | POLLOUT.
+
+POLLIN ça surveille : "est-ce que le descripteur de fichier est prêt à être lu",
+c'est-à-dire : "est-ce qu'il y a des données disponibles en lecture sur le fd", c'est-à-dire : "est-ce que recv va bloquer ou pas".
+dans le cas du socket serveur, ça surveille : "est-ce qu'il y a un client à accepter",
+c'est-à-dire : "estce que accept va bloquer ou pas".
+
+POLLOUT ça surveille : "est-ce que le descripteur de fichier est prêt pour une écriture",
+c'est-à-dire : "est-ce que le buffer d'envoi du socket a de la place",
+c'est-à-dire : "est ce que send va bloquer ou pas".
+
+dans revents on a une réponse, toujours sous forme de constante :
+- POLLIN : réponse positive à l'event POLLIN
+- POLLOUT : réponse positive à POLLOUT
+- POLLHUP (→ hang up) : le pair à fermé la connexion. on va pouvoir fermer le socket.
+- POLLERR : une erreur est survenue sur le fd. il faut fermer / diagnostiquer.
+- POLLNVAL (→ invalid) : fd invalide. il faut le dégager.
+
+donc on peut tester un élément "pfd" (de type struct pollfd) avec :
+if (pfd.revents & (POLLHUP | POLLERR | POLLNVAL))
+    // le client est parti ou une erreur est survenue
+if (pfd.revents & POLLIN)
+    // il y a quelque chose à lire
+if (pfd.revents & POLLOUT)
+    // on peut envoyer des données
+
+
+on doit faire un tableau de struct pollfd.
+le premier élément c'est le socket serveur pour savoir quand accept a reussi, ensuite c'est les clients.
+
+
+int poll(struct pollfd fds[], nfds_t nfds, int timeout_ms);
+fds c'est le tableau.
+nfds c'est le nombre de fds dans le tableau.
+timeout_ms c'est le temps d'attente maximum en millisecondes ou -1 pour attendre indéfiniment
+
+poll bloque jusqu'à ce qu'un évènement sur un fd arrive (ou jusqu'au timeout). il peut aussi return -1 avec errno=EINTR si il y a un signal, dans ce cas il faut relancer la boucle.

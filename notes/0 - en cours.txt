@@ -1,17 +1,14 @@
 
 -
 
+
+les buffers à améliorer :
 https://chatgpt.com/c/68e908f9-70f0-8327-b9cd-2819d6987ef8
 
 
-il faut modifier la classe data pour changer le nom en server
-
-il faut faire la classe client. elle aura les attribut id, fd, nickname, username, hostname.
+dans client on aura sûrement les attributs nickname, username, hostname.
 on verra plus tard mais on aura surement besoin d'un tampon de lecture pour les messages hachés (string ça suffit) et un tampon d'envoie de type std::deque<std::string>
 
-dans le server, on va stocker les clients dans une list de clients de type std::list<Client>. on va aussi avoir besoin d'une map id de client -> itérateur dans la liste et une map fd de client -> iterateur dans la liste. type : std::unordered_map<int, ?>. on ajoute comme ça : clients_by_id_.emplace(id, ?);
-
-quand on ajoute un client, on a une variable static pour avoir son id.
 
 
 

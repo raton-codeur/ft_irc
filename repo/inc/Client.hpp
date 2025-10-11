@@ -7,6 +7,7 @@ class Client
 
 	int _id;
 	int _fd;
+	int _i_poll;
 
 	Client();
 	Client(const Client&);
@@ -19,4 +20,7 @@ class Client
 
 	int getId() const;
 	int getFd() const;
+	int getIndexPoll() const;
+
+	void setIndexPoll(int i_poll);
 };

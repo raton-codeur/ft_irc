@@ -35,50 +35,14 @@ Server::~Server()
 		delete *it;
 }
 
-int Server::getServerFd() const
-{
-	return _server_fd;
-}
-
 void Server::addClient(int client_fd)
 {
+	_poll_array.push_back(pollfd());
 	_clients.push_back(new Client(_next_client_id, client_fd));
-	clients_by_id[_next_client_id++] = _clients.back();
-	clients_by_fd[client_fd] = _clients.back();
+	_clients_by_id[_next_client_id++] = _clients.back();
+	_clients_by_fd[client_fd] = _clients.back();
 }
 
-void Server::checkClients()
+void Server::main()
 {
-	int n;
-	char buffer[1024];
-	std::string s = "message from server: ok\n";
-	Client* client;
-	for (Iterator it = _clients.begin(); it != _clients.end(); )
-	{
-		client = *it;
-		n = recv(client->getFd(), buffer, sizeof(buffer), 0);
-		if (n == 0)
-		{
-			std::cout << "client " << client->getId() << ": disconnected" << std::endl;
-			clients_by_id.erase(client->getId());
-			clients_by_fd.erase(client->getFd());
-			it = _clients.erase(it);
-			delete client;
-			continue;
-		}
-		else if (n == -1)
-		{
-			if (errno == EAGAIN || errno == EWOULDBLOCK) {} // pas de données envoyées mais la connexion est toujours là
-			else
-				perror_and_throw("recv");
-		}
-		else
-		{
-			std::cout << "message from client " << client->getId() << ": ";
-			std::cout.write(buffer, n);
-			if (send(client->getFd(), s.c_str(), s.size(), 0) == -1)
-				perror_and_throw("send");
-		}
-		++it;
-	}
 }
