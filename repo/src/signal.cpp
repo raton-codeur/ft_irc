@@ -8,12 +8,11 @@ static void handler(int signum)
 	g_stop_requested = 1;
 }
 
-void set_handler()
+void set_signal_handler()
 {
 	struct sigaction sa;
 	sa.sa_handler = handler;
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
-	if (sigaction(SIGINT,  &sa, NULL) == -1)
-		perror_and_throw("sigaction");
+	sigaction(SIGINT,  &sa, NULL);
 }

@@ -2,7 +2,8 @@ NAME = ircserv
 FLAGS = -Wall -Wextra -Werror -std=c++98 -Iinc
 SRCS = $(addprefix src/, \
 	main.cpp \
-	Data.cpp \
+	Server.cpp \
+	Client.cpp \
 	utils.cpp \
 	signal.cpp \
 )
