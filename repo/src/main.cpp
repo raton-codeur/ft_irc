@@ -7,9 +7,9 @@ int main()
 	try
 	{
 		Server server;
-		set_signal_handler();
+		set_signal_handlers();
 		while (g_stop_requested == 0)
-			server.main();
+			server.run();
 	}
 	catch (const std::exception& e)
 	{

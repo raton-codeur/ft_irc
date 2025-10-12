@@ -16,7 +16,7 @@ class Server
 	std::vector<struct pollfd> _poll_array;
 
 	void addClient(int client_fd);
-	void removeClient(int client_id);
+	void acceptClients();
 
 	typedef std::list<Client*>::iterator Iterator;
 
@@ -27,6 +27,5 @@ class Server
 
 	Server();
 	~Server();
-
-	void main();
+	void run();
 };

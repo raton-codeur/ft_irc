@@ -2,6 +2,19 @@
 -
 
 
+on a amélioré l'architecture du projet. le corps de la boucle principale du serveur est maintenant dans la classe Server. on a protégé toutes les fonctions, on a ajouté des signaux et on a commencé à intégrer poll. on a un tableau des pollfds qui se construit au fur et à mesure. plus besoin de faire sleep(1), on surveille l'arrivée de nouveaux clients grace à poll.
+
+pour voir si un client a envoyé quelque chose ou s'est déconnecté, il faut maintenant parcourir le poll array.
+
+quand on retire un client, il faut faire un swap and pop dans le poll array.
+
+dans la classe client on a l'association entre le fd du client et son index. dans le poll array on a juste les fd des clients. ce serait bien d'avoir un pointeur vers le pollfd du client dans la classe ?
+
+quand on client veut envoyer un message à un autre client, il faut ajouter le pollout du client receveur en event de poll.
+
+
+
+
 les buffers à améliorer :
 https://chatgpt.com/c/68e908f9-70f0-8327-b9cd-2819d6987ef8
 
