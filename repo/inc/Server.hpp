@@ -17,6 +17,7 @@ class Server
 
 	void addClient(int client_fd);
 	void acceptClients();
+	void deleteClient(Client* client, int i);
 
 	typedef std::list<Client*>::iterator Iterator;
 
