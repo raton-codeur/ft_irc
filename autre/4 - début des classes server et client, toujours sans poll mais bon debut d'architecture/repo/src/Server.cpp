@@ -76,9 +76,9 @@ void Server::checkClients()
 		{
 			std::cout << "message from client " << client->getId() << ": ";
 			std::cout.write(buffer, n);
-			if (send(client->getFd(), s.c_str(), s.size(), 0) == -1)
-				perror_and_throw("send");
 		}
+		if (send(client->getFd(), s.c_str(), s.size(), 0) == -1)
+			perror_and_throw("send");
 		++it;
 	}
 }

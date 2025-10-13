@@ -93,45 +93,39 @@ void Server::run()
 			perror_and_throw("poll");
 	}
 	acceptClients();
-	for (size_t i = 1; i < _poll_array.size(); ++i)
-	{
-		if (_poll_array[i].revents & (POLLHUP | POLLERR | POLLNVAL))
-		
 
+
+	// à modifier :
+	int n;
+	char buffer[1024];
+	std::string s = "message from server: ok\n";
+	Client* client;
+	for (Iterator it = _clients.begin(); it != _clients.end(); )
+	{
+		client = *it;
+		n = recv(client->getFd(), buffer, sizeof(buffer), 0);
+		if (n == 0)
+		{
+			std::cout << "client " << client->getId() << ": disconnected" << std::endl;
+			_clients_by_id.erase(client->getId());
+			_clients_by_fd.erase(client->getFd());
+			it = _clients.erase(it);
+			delete client;
+			continue;
+		}
+		else if (n == -1)
+		{
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {} // pas de données envoyées mais la connexion est toujours là
+			else
+				perror_and_throw("recv");
+		}
+		else
+		{
+			std::cout << "message from client " << client->getId() << ": ";
+			std::cout.write(buffer, n);
+			if (send(client->getFd(), s.c_str(), s.size(), 0) == -1)
+				perror_and_throw("send");
+		}
+		++it;
 	}
 }
-
-
-// int n;
-// char buffer[1024];
-// std::string s = "message from server: ok\n";
-// Client* client;
-// for (Iterator it = _clients.begin(); it != _clients.end(); )
-// {
-// 	client = *it;
-// 	n = recv(client->getFd(), buffer, sizeof(buffer), 0);
-// 	if (n == 0)
-// 	{
-// 		std::cout << "client " << client->getId() << ": disconnected" << std::endl;
-// 		_clients_by_id.erase(client->getId());
-// 		_clients_by_fd.erase(client->getFd());
-// 		it = _clients.erase(it);
-// 		delete client;
-// 		continue;
-// 	}
-// 	else if (n == -1)
-// 	{
-// 		if (errno == EAGAIN || errno == EWOULDBLOCK) {} // pas de données envoyées mais la connexion est toujours là
-// 		else
-// 			perror_and_throw("recv");
-// 	}
-// 	else
-// 	{
-// 		std::cout << "message from client " << client->getId() << ": ";
-// 		std::cout.write(buffer, n);
-// 		if (send(client->getFd(), s.c_str(), s.size(), 0) == -1)
-// 			perror_and_throw("send");
-// 	}
-// 	++it;
-// }
-
