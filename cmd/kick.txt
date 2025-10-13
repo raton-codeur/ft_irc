@@ -1,0 +1,49 @@
+
+KICK ==> EJECTER UN UTILISATEUR D'UN CANAL 
+
+syntax irc : KICK <channel> <user> [<comment>] 
+			 KICK #Dogs Bozo :Stop sending cats pictures.
+
+A verifier ==> Le client qui envoie la commande doit etre : 
+				- connecté
+				- operateur du channel (@)
+				- <channel> doit exister
+		   ==> L'utilisateur a kick doit exister et etre dans le channel
+
+A faire ==> - Envoyer un message notifiant le KICK a tout les membres du channel : 
+			  :<nick>!<user>@<host> KICK #Dogs Bozo :Stop sending cat pictures.
+			- Retirer l'utilisateur du channel
+
+Retour possible :
+		
+			- (461) ERR_NEEDMOREPARAMS
+             "<command> :Not enough parameters"
+			  Returned by the server by numerous commands to
+              indicate to the client that it didn't supply enough parameters.
+							 
+			- (403) ERR_NOSUCHCHANNEL
+			"<server name> :No such server"
+			Used to indicate the server name given currently doesn't exist.
+							 
+			- (482) ERR_CHANOPRIVSNEEDED
+			"<channel> :You're not channel operator"
+			Any command requiring 'chanop' privileges (such as
+			MODE messages) must return this error if the client
+			making the attempt is not a chanop on the specified
+			channel.
+
+			- (442) ERR_NOTONCHANNEL
+			"<channel> :You're not on that channel"
+			Returned by the server whenever a client tries to
+            perform a channel effecting command for which the
+            client isn't a member.
+
+			- (441) ERR_USERNOTINCHANNEL
+			"<nick> <channel> :They aren't on that channel"
+			Returned by the server to indicate that the target
+            user of the command is not on the given channel.
+
+			- (401) ERR_NOSUCHNICK
+			"<nickname> :No such nick/channel"
+			Used to indicate the nickname parameter supplied to a
+            command is currently unused.

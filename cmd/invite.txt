@@ -1,0 +1,56 @@
+
+INVITE ==> INVITE UN UTILISATEUR A REJOINDRE UN CANAL 
+
+syntax irc : INVITE <nickname> <channel>
+			 INVITE Bozo #Circus
+
+A verifier ==> - <channel> doit exister
+			   - L'expediteur doit etre dans le channel
+			   - Si <channel> est uniquement sur invitation (+i), l'expediteur doit etre operateur.
+			   - Le channel sur lequel <nickname> est invite n'est pas oblige d'exister ou détre valide.
+
+A faire ==> - Ajouter <nickname> a la liste des invites du channel
+			- Envoyer au client cible <nickname> : 
+			  <nick>!<user>@<host> INVITE Bozo :#Circus
+			- Envoyer une confirmation a l'expediteur : 
+			  341 <sender> <nickname> #Circus
+
+
+Retour possible :
+		
+			- (461) ERR_NEEDMOREPARAMS
+             "<command> :Not enough parameters"
+			  Returned by the server by numerous commands to
+              indicate to the client that it didn't supply enough parameters.
+
+			- (401) ERR_NOSUCHNICK
+			 "<nickname> :No such nick/channel"
+			 Used to indicate the nickname parameter supplied to a
+             command is currently unused.
+							 
+			- (442) ERR_NOTONCHANNEL
+			"<channel> :You're not on that channel"
+			Returned by the server whenever a client tries to
+            perform a channel effecting command for which the
+            client isn't a member.
+
+			- (482) ERR_CHANOPRIVSNEEDED
+			"<channel> :You're not channel operator"
+			Any command requiring 'chanop' privileges (such as
+			MODE messages) must return this error if the client
+			making the attempt is not a chanop on the specified
+			channel.
+
+			- (443) ERR_USERONCHANNEL
+			"<user> <channel> :is already on channel"
+			Returned when a client tries to invite a user to a
+            channel they are already on.
+
+			- (341) RPL_INVITING
+			"<channel> <nick>"
+			Returned by the server to indicate that the
+            attempted INVITE message was successful and is
+            being passed onto the end client.
+
+			- (301) RPL_AWAY
+			"<nick> :<away message>"

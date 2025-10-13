@@ -1,0 +1,33 @@
+PART ⇒ Quitter un ou plusieurs channels.
+
+syntax irc : PART <channel>{,<channel>} [<message>]
+			 PART #dev :See you guys!
+			 PART #dev,#general
+			
+
+A verifier ==> - Le client doit être connecté et membre de chaque channel qu’il quitte.
+			   - Le(s) <channel> doivent exister
+			   - Si un channel devient vide après le départ, le serveur doit le supprimer (optionnel)
+
+A faire ==> - Pour chaque <channel> :
+					-Envoyer à tous les membres du channel:
+					:<nick>!<user>@<host> PART <channel> [:<message>]
+					-Retirer le client de la liste des membres
+					-Si le channel devient vide → supprimer le channel du serveur
+
+Retour possible : 
+			
+			- (403) ERR_NOSUCHCHANNEL
+			"<server name> :No such server"
+			Used to indicate the server name given currently doesn't exist.
+
+			- (442) ERR_NOTONCHANNEL
+			"<channel> :You're not on that channel"
+			Returned by the server whenever a client tries to
+            perform a channel effecting command for which the
+            client isn't a member.
+
+			- (461) ERR_NEEDMOREPARAMS
+             "<command> :Not enough parameters"
+			  Returned by the server by numerous commands to
+              indicate to the client that it didn't supply enough parameters.

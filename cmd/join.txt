@@ -1,0 +1,42 @@
+
+JOIN ==> REJOINDRE UN CHANNEL
+
+syntax irc : JOIN <channel> [<key>]
+
+A verifier ==> - <channel> doit exister, si non le creer et le client devient operateur du channel
+			   - Verifier les modes du channel :
+			   		- si +i -> verifier si le client est invite
+					- si +k verifier que la cle fournie correspond
+					- si +l verifier que le nombre de client max n'est pas atteint
+
+A faire ==> - Ajouter le client a la liste des membres du channel
+			- Stocker les modes dans un std::map<std::string, bool> par exemple dans la classe channel.
+			- Diffuser a tous les autres membres: 
+			 :<nick>!<user>@<host> JOIN :#channel
+			- Diffuser au nouveau membre : 
+				- Le topic (RPL_TOPIC ou RPL_NOTOPIC)
+				- la liste des membres (RPL_NAMREPLY)
+				- la fin de la liste (RPL_ENDOFNAMES)
+
+
+Retour possible :
+		
+			- (461) ERR_NEEDMOREPARAMS
+             "<command> :Not enough parameters"
+			  Returned by the server by numerous commands to
+              indicate to the client that it didn't supply enough parameters.
+							 
+			- (473) ERR_INVITEONLYCHAN
+			 "<channel> :Cannot join channel (+i)"
+					 
+			- (475) ERR_BADCHANNELKEY
+			 "<channel> :Cannot join channel (+k)"
+
+			- (471) ERR_CHANNELISFULL
+			 "<channel> :Cannot join channel (+l)"
+
+			- (403) ERR_NOSUCHCHANNEL
+			"<channel name> :No such channel"
+			
+
+

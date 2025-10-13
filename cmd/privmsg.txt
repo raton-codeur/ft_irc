@@ -1,0 +1,47 @@
+
+PRIVMSG ==> ENVOYER UN MESSAGE PRIVE
+
+syntax irc : PRIVMSG <target> :<message>
+			<target> peut etre un nickname (msg prive direct) 
+			<target> peut etre un channel (msg a tout les membres du channel)
+			<target> peut etre une liste de nickname ou de channel, separes par des virgules.
+A verifier ==> -Si <target> est un channel:
+					-Le client doit faire parti du channel
+
+A faire ==> -Si <target> est un channel:
+				- Envoyer le message a tout les membres du channel
+				:<nick>!<user>@<host> PRIVMSG #dev :hello world
+			- Si <target> est un user :
+				-trouver le client par son nickname
+				-transmetre le message : 
+				:<nick>!<user>@<host> PRIVMSG <target> :message
+
+
+Retour possible :
+		
+			- (411) ERR_NORECIPIENT
+             ":No recipient given (<command>)"
+
+			- (412) ERR_NOTEXTTOSEND
+			":No text to send"
+
+			- (403) ERR_NOSUCHCHANNEL
+			"<channel name> :No such channel"
+
+			- (401) ERR_NOSUCHNICK
+			"<nickname> :No such nick/channel"
+			Used to indicate the nickname parameter supplied to a
+            command is currently unused.
+
+			- (407) ERR_TOOMANYTARGETS
+			"<target> :Duplicate recipients. No message delivered""
+			Returned to a client which is attempting to send a
+            PRIVMSG/NOTICE using the user@host destination format
+            and for a user@host which has several occurrences.
+
+			-(404) ERR_CANNOTSENDTOCHAN 
+			"<channel> :Cannot send to channel"
+
+
+
+

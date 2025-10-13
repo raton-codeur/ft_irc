@@ -1,0 +1,11 @@
+AUTHENTIFICATION / IDENTIFICATION 
+
+1 - Le client se connecte 
+2 - Le client envoi :
+PASS <password>      (optionnel)
+NICK <nickname>
+USER <username> <mode> * :<realname>
+3 - Le serveur a recu NICK + USER ==> Il envoie le welcome : 
+:irc.localhost 001 <nick> :Welcome to the Internet Relay Network <nick>!<user>@<host>
+
+

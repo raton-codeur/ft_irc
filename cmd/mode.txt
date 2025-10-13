@@ -1,0 +1,58 @@
+
+MODE ==> PERMET DE GERER LES MODES D'UN CHANNEL
+		 Contrôler les restrictions, le mot de passe, les opérateurs, etc.
+
+syntax irc : MODE <channel> {[+ | -]|o|p|s|i|t|n|b|v|k|l} [<parameters>]
+
+Modes a gerer : - i : Invite-only => Pas de parametre
+				- t : Seuls les operateur peuvent changer le topic => Pas de parametre
+				- k : Definit un mot de passe pour le channel => parametre : <Key>
+				- o : Donne/retire le statut opérateur à un user => parametre : <Nick>
+				- l : Définit la limite d’utilisateurs sur le channel => parametre : <number>
+
+Exemples : - MODE #dev +i
+			→ active le mode "invite-only" sur le channel dev
+		   - MODE #dev +k secret123
+			→ définit secret123 comme mot de passe sur le channel dev
+		   - MODE #dev +o Alice
+			→ donne à Alice les droits d’opérateur sur le channel dev
+		   - MODE #dev -o Bob
+			→ retire à Bob les droits d’opérateur sur le channel dev
+
+A verifier ==> - <channel> doit exister
+			   - L'emetteur est operateur sur le channel si besoin
+		   ==> Pour +-o L'utilisateur doit etre dans le channel
+
+A faire ==> - Appliquer ou retirer le mode
+			- Stocker les modes dans un std::map<std::string, bool> par exemple dans la classe channel.
+			- Diffuser a tous le changement : 
+			 :<nick>!<user>@<host> MODE #dev +i
+			 :<nick>!<user>@<host> MODE #dev +ntk secret123
+
+
+Retour possible :
+		
+			- (461) ERR_NEEDMOREPARAMS
+             "<command> :Not enough parameters"
+			  Returned by the server by numerous commands to
+              indicate to the client that it didn't supply enough parameters.
+							 
+			- (403) ERR_NOSUCHCHANNEL
+			"<server name> :No such server"
+			Used to indicate the server name given currently doesn't exist.
+							 
+			- (482) ERR_CHANOPRIVSNEEDED
+			"<channel> :You're not channel operator"
+			Any command requiring 'chanop' privileges (such as
+			MODE messages) must return this error if the client
+			making the attempt is not a chanop on the specified
+			channel.
+
+			- (467) ERR_KEYSET
+			"<channel> :Channel key already set"
+
+			- (472) ERR_UNKNOWNMODE
+			"<char> :is unknown mode char to me"
+
+
+

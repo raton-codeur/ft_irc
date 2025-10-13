@@ -1,0 +1,29 @@
+NICK ==> Définit (ou change) le pseudonyme du client.
+
+syntax irc : NICK <nickname>
+
+A verifier ==> - <nickname> ne doit pas etre deja pris
+			   - Respecte les charactere autorises
+
+A faire ==> - Assigner le nickname au client
+			- Si le client a deja envoyer USER, il devient registered.
+
+
+Retour possible :
+		
+			- (431) ERR_NONICKNAMEGIVEN
+			":No nickname given" 
+			Returned when a nickname parameter expected for a
+            command and isn't found.
+
+			- (432) ERR_ERRONEUSNICKNAME
+			"<nick> :Erroneus nickname"
+			Returned after receiving a NICK message which contains
+            characters which do not fall in the defined set.
+
+			- (433) ERR_NICKNAMEINUSE
+			"<nick> :Nickname is already in use"
+			Returned when a NICK message is processed that results
+            in an attempt to change to a currently existing
+            nickname.
+

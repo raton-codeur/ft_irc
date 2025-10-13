@@ -1,0 +1,52 @@
+
+TOPIC ==> AFFICHER OU MODIFIER LE SUJET D'UN CANAL 
+
+syntax irc : TOPIC <channel> [<topic>]
+			 TOPIC #Circus → affiche le topic
+			 TOPIC #Circus :Bozo show tonight → change le topic
+
+A verifier ==> - <channel> doit exister
+			   - si <topic> fourni :
+			   		- verifier que le client est dans le channel
+					- verifier le mode du channel, si +t seul un operateur peut changer le topic
+
+A faire ==> - si pas de <topic> fournit -> renvoyer le topic actuel :
+					- Si pas de topic actuellement -> 331 <nick> #Circus :No topic is set
+					- Sinon -> 332 <nick> #Circus :<topic>
+			- si <topic> fourni : 
+					- Met a jour le topic du channel
+					- Envoyer a tous : 
+					:<nick>!<user>@<host> TOPIC #Circus :Bozo show tonight
+
+
+Retour possible :
+		
+			- (461) ERR_NEEDMOREPARAMS
+             "<command> :Not enough parameters"
+			  Returned by the server by numerous commands to
+              indicate to the client that it didn't supply enough parameters.
+							 
+			- (403) ERR_NOSUCHCHANNEL
+			"<server name> :No such server"
+			Used to indicate the server name given currently doesn't exist.
+							 
+			- (482) ERR_CHANOPRIVSNEEDED
+			"<channel> :You're not channel operator"
+			Any command requiring 'chanop' privileges (such as
+			MODE messages) must return this error if the client
+			making the attempt is not a chanop on the specified
+			channel.
+
+			- (442) ERR_NOTONCHANNEL
+			"<channel> :You're not on that channel"
+			Returned by the server whenever a client tries to
+            perform a channel effecting command for which the
+            client isn't a member.
+
+			- (331) RPL_NOTOPIC
+			"<channel> :No topic is set"
+
+			- (332) RPl_TOPIC
+			"<channel> :<topic>"
+
+			
