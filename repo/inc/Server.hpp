@@ -1,6 +1,7 @@
 #pragma once
 #include "main.hpp"
 #include "Client.hpp"
+#include "Channel.hpp"
 
 class Server
 {
@@ -11,9 +12,12 @@ class Server
 	int _server_fd;
 	std::vector<Client*> _clients;
 	std::vector<struct pollfd> _poll_array;
-	int _next_client_id;
+	std::map<std::string, Channel*> _channels;
 
-	void addClient(int client_fd);
+	int _next_client_id;
+	std::string	_password;
+
+	void addClient(int client_fd, std::string &clientIP);
 	void acceptClients();
 	void deleteClient(Client* client, int i);
 	void handleClientEvents();
@@ -26,4 +30,9 @@ class Server
 	Server();
 	~Server();
 	void run();
+
+	Client* findClientByNick(const std::string &nick);
+	Channel* getOrCreateChannel(const std::string &name);
+	Channel* findChannel(const std::string &name);
+	const std::map<std::string, Channel*>& getChannels() const;
 };

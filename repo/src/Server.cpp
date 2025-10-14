@@ -44,6 +44,9 @@ Server::~Server()
 	}
 	for (size_t i = 1; i < _clients.size(); ++i)
 		delete _clients[i];
+	for (std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+		delete it->second;
+	_channels.clear();
 }
 
 void Server::run()
@@ -59,9 +62,9 @@ void Server::run()
 	handleClientEvents();
 }
 
-void Server::addClient(int client_fd)
+void Server::addClient(int client_fd, std::string &clientIP)
 {
-	_clients.push_back(new Client(_next_client_id++, client_fd));
+	_clients.push_back(new Client(_next_client_id++, client_fd, clientIP));
 
 	struct pollfd p;
 	p.fd = client_fd;
@@ -72,13 +75,16 @@ void Server::addClient(int client_fd)
 
 void Server::acceptClients()
 {
+	sockaddr_in client_addr;
+	socklen_t client_len = sizeof(client_addr);
+
 	if (_poll_array[0].revents & (POLLHUP | POLLERR | POLLNVAL))
 		error_and_throw("server socket error");
 	if (_poll_array[0].revents & POLLIN)
 	{
 		while (true)
 		{
-			int client_fd = accept(_server_fd, NULL, NULL);
+			int client_fd = accept(_server_fd, (sockaddr*)&client_addr, &client_len);
 			if (client_fd == -1)
 			{
 				if (errno == EAGAIN || errno == EWOULDBLOCK || g_stop_requested)
@@ -92,7 +98,8 @@ void Server::acceptClients()
 			{
 				if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
 					perror_and_throw("fcntl (client)");
-				addClient(client_fd);
+				std::string clientIP = inet_ntoa(client_addr.sin_addr);
+				addClient(client_fd, clientIP);
 			}
 		}
 	}
@@ -159,4 +166,40 @@ void Server::handleClientEvents()
 		else
 			++i;
 	}
+}
+
+
+Client* Server::findClientByNick(const std::string &nick)
+{
+	for (size_t i = 1; i < _clients.size(); ++i)
+	{
+		if (_clients[i]->getNick() == nick)
+			return _clients[i];
+	}
+	return NULL;
+}
+
+Channel* Server::findChannel(const std::string &name)
+{
+	std::map<std::string, Channel*>::iterator it = _channels.find(name);
+	if (it != _channels.end())
+		return it->second;
+	return NULL;
+}
+
+Channel* Server::getOrCreateChannel(const std::string &name)
+{
+	Channel* chan = findChannel(name);
+	if (!chan)
+	{
+		chan = new Channel(name); //je delete dans le destructeur de serveur
+		_channels[name] = chan;
+		std::cout << "New channel created: " << name << std::endl;
+	}
+	return chan;
+}
+
+const std::map<std::string, Channel*>& Server::getChannels() const
+{
+	return _channels;
 }
