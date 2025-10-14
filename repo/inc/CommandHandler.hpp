@@ -20,6 +20,10 @@ private:
 	void USER(Client &client, const std::vector<std::string> &args);
 	void JOIN(Client &client, const std::vector<std::string> &args);
 	void PRIVMSG(Client &client, const std::vector<std::string> &args);
+	void INVITE(Client &client, const std::vector<std::string> &args);
+	void KICK(Client &client, const std::vector<std::string> &args);
+	void PART(Client &client, const std::vector<std::string> &args);
+	void TOPIC(Client &client, const std::vector<std::string> &args);
 
 public: 
 	CommandHandler(Server &server);

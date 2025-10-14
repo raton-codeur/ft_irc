@@ -9,6 +9,10 @@ CommandHandler::CommandHandler(Server &server) : _server(server)
 	_commands["USER"] = &CommandHandler::USER;
 	_commands["JOIN"] = &CommandHandler::JOIN;
 	_commands["PRIVMSG"] = &CommandHandler::PRIVMSG;
+	_commands["INVITE"] = &CommandHandler::INVITE;
+	_commands["KICK"] = &CommandHandler::KICK;
+	_commands["PART"] = &CommandHandler::PART;
+	_commands["TOPIC"] = &CommandHandler::TOPIC;
 }
 
 CommandHandler::~CommandHandler()
@@ -77,5 +81,21 @@ void CommandHandler::JOIN(Client &client, const std::vector<std::string> &args)
 }
 
 void CommandHandler::PRIVMSG(Client &client, const std::vector<std::string> &args)
+{
+}
+
+void CommandHandler::INVITE(Client &client, const std::vector<std::string> &args)
+{
+}
+
+void CommandHandler::KICK(Client &client, const std::vector<std::string> &args)
+{
+}
+
+void CommandHandler::PART(Client &client, const std::vector<std::string> &args)
+{
+}
+
+void CommandHandler::TOPIC(Client &client, const std::vector<std::string> &args)
 {
 }
