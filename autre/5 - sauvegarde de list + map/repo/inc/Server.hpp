@@ -9,14 +9,17 @@ class Server
 	const int _backlog;
 
 	int _server_fd;
-	std::vector<Client*> _clients;
-	std::vector<struct pollfd> _poll_array;
+	std::list<Client*> _clients;
 	int _next_client_id;
+	std::map<int, Client*> _clients_by_id;
+	std::map<int, Client*> _clients_by_fd;
+	std::vector<struct pollfd> _poll_array;
 
 	void addClient(int client_fd);
 	void acceptClients();
 	void deleteClient(Client* client, int i);
-	void handleClientEvents();
+
+	typedef std::list<Client*>::iterator Iterator;
 
 	Server(const Server&);
 	Server& operator=(const Server&);

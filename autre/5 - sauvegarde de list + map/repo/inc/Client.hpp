@@ -7,8 +7,6 @@ class Client
 
 	int _id;
 	int _fd;
-	std::string _in;
-	std::string _out;
 
 	Client();
 	Client(const Client&);
