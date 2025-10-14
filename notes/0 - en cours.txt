@@ -1,6 +1,8 @@
 -
 
 
+buffers client
+https://chatgpt.com/c/68ee053c-86b4-8330-b733-3a1d64ab1f22
 
 
 quand on client veut envoyer un message à un autre client, il faut ajouter le pollout du client receveur en event de poll.
