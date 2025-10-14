@@ -1,0 +1,33 @@
+-
+les modes d'un channel
+
+INVITE_ONLY
+i
+pas de paramètre
+"le channel est en invite-only"
++i passer le channel en invite-only
+-i retirer le invite-only du channel
+
+PROTECTED_TOPIC
+t
+pas de paramètre
+"le topic du channel est protégé"
++t passer le topic du channel en protégé
+-t retirer la protection sur le topic du channel
+quand il est protégé, seuls les opérateurs du channel peuvent le changer
+
+KEY
+k
++k secret : nouveau mot de passe pour le channel : "secret"
+-k : retirer le mot de passe
+
+OPERATOR
+o
++o quentin : donner les droits d'opérateur à quentin
+-o quentin : retirer les droits d'opérateur à quentin
+
+USER_LIMIT
+l
++l 10 : limiter à 10 le nombre d'utilisateurs dans le channel
+-l : retirer la limite d'utilisateurs
+-

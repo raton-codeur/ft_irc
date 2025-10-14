@@ -7,8 +7,6 @@ class Client
 
 	int _id;
 	int _fd;
-	std::string _nickname;
-	std::string _username;
 	std::string _in;
 	std::string _out;
 	std::set<std::string> _channels;
