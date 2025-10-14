@@ -1,25 +1,6 @@
 #include "CommandHandler.hpp"
 #include "main.hpp"
 
-std::vector<std::string> _IRCsplit(const std::string &str)
-{
-	std::vector<std::string> result;
-	std::istringstream iss(str);
-	std::string word;
-
-	while (iss >> word)
-	{
-		if (word[0] == ':') // tout ce qui suit devient un seul argument
-		{
-			std::string rest;
-			std::getline(iss, rest);           // récupère le reste de la ligne
-			result.push_back(word.substr(1) + rest); // on enlève les ":" et concatène
-			break;                             // on a tout récupéré
-		}
-		result.push_back(word);                 // sinon, juste l'ajouter au vecteur
-	}
-	return result;
-}
 
 CommandHandler::CommandHandler(Server &server) : _server(server)
 {
@@ -31,5 +12,70 @@ CommandHandler::CommandHandler(Server &server) : _server(server)
 }
 
 CommandHandler::~CommandHandler()
+{
+}
+
+std::vector<std::string> _IRCsplit(const std::string &str)
+{
+	std::vector<std::string> result;
+	std::istringstream iss(str);
+	std::string word;
+
+	while (iss >> word)
+	{
+		if (word[0] == ':')
+		{
+			std::string rest;
+			std::getline(iss, rest);
+			result.push_back(word.substr(1) + rest);
+			break;
+		}
+		result.push_back(word);
+	}
+	return result;
+}
+
+std::string CommandHandler::_toUpper(const std::string &s) const
+{
+	std::string res = s;
+	for (size_t i = 0; i < res.size(); ++i)
+	{
+		if (res[i] >= 'a' && res[i] <= 'z')
+			res[i] -= 32;
+	}
+	return res;
+}
+
+
+void CommandHandler::handleCommand(Client &client, const std::string &input)
+{
+	std::vector<std::string> args = _IRCsplit(input);
+	if (args.empty())
+	return;
+	std::string cmd = _toUpper(args[0]);
+	std::map<std::string, CommandFunction>::iterator it = _commands.find(cmd);
+	if (it != _commands.end())
+	(this->*(it->second))(client, args);
+	else
+	std::cout << "Unknown command: " << cmd << std::endl;
+}
+
+void CommandHandler::PASS(Client &client, const std::vector<std::string> &args)
+{
+}
+
+void CommandHandler::NICK(Client &client, const std::vector<std::string> &args)
+{
+}
+
+void CommandHandler::USER(Client &client, const std::vector<std::string> &args)
+{
+}
+
+void CommandHandler::JOIN(Client &client, const std::vector<std::string> &args)
+{
+}
+
+void CommandHandler::PRIVMSG(Client &client, const std::vector<std::string> &args)
 {
 }

@@ -13,7 +13,7 @@ private:
 	Server &_server;
 	std::map<std::string, CommandFunction> _commands;
 	std::vector<std::string> _IRCsplit(const std::string &str);
-	// std::string _toUpper(const std::string &s) const;
+	std::string _toUpper(const std::string &s) const;
 
 	void PASS(Client &client, const std::vector<std::string> &args);
 	void NICK(Client &client, const std::vector<std::string> &args);
@@ -21,7 +21,7 @@ private:
 	void JOIN(Client &client, const std::vector<std::string> &args);
 	void PRIVMSG(Client &client, const std::vector<std::string> &args);
 
-public:
+public: 
 	CommandHandler(Server &server);
 	~CommandHandler();
 	void handleCommand(Client &client, const std::string &input);

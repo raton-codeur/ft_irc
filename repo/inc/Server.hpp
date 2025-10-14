@@ -2,6 +2,7 @@
 #include "main.hpp"
 #include "Client.hpp"
 #include "Channel.hpp"
+#include "CommandHandler.hpp"
 
 class Server
 {
@@ -16,6 +17,7 @@ class Server
 
 	int _next_client_id;
 	std::string	_password;
+	CommandHandler	*_cmdHandler;
 
 	void addClient(int client_fd, std::string &clientIP);
 	void acceptClients();

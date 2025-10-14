@@ -33,6 +33,7 @@ Server::Server() : _backlog(5), _next_client_id(0)
 	_poll_array.push_back(p);
 
 	_clients.push_back(nullptr);
+	_cmdHandler = new CommandHandler(*this);
 }
 
 Server::~Server()
@@ -47,6 +48,7 @@ Server::~Server()
 	for (std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
 		delete it->second;
 	_channels.clear();
+	delete _cmdHandler;
 }
 
 void Server::run()
