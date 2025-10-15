@@ -20,36 +20,20 @@ CommandHandler::~CommandHandler()
 std::vector<std::string> CommandHandler::_split(const std::string& input)
 {
 	std::vector<std::string> result;
-	size_t i = 0;
-    size_t n = input.size();
+	std::istringstream iss(input);
+	std::string word;
 
-	while (i < n && input[i] == ' ')
-        ++i;
-
-	if (i < n && input[i] == ':')
+	while (iss >> word)
 	{
-        while (i < n && input[i] != ' ')
-            ++i;
-        while (i < n && input[i] == ' ')
-            ++i;
-    }
-
-	while (i < n)
-	{
-		if (input[i] == ':')
+		if (word[0] == ':')
 		{
-			result.push_back(input.substr(i + 1));
+			std::string rest;
+			std::getline(iss, rest);
+			result.push_back(word.substr(1) + rest);
 			break;
 		}
-		size_t j = i;
-		while (j < n && input[j] != ' ')
-			++j;
-		result.push_back(input.substr(i, j - i));
-		i = j;
-		while (i < n && input[i] == ' ')
-			++i;
+		result.push_back(word);
 	}
-
 	return result;
 }
 
