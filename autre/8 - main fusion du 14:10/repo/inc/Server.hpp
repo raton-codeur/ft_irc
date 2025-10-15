@@ -26,14 +26,13 @@ private:
 	Channel* getChannel(const std::string& name);
 	Channel* getOrCreateChannel(const std::string& name);
 
-	Server();
 	Server(const Server&);
 	Server& operator=(const Server&);
 
 public:
 
-	Server(int argc, char** argv);
+	Server();
 	~Server();
-
+	
 	void run();
 };

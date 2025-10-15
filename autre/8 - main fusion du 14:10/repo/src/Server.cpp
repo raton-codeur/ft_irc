@@ -1,23 +1,7 @@
 #include "Server.hpp"
 
-static void checkArgs(int argc, char** argv)
+Server::Server() : _backlog(5), _cmdHandler(*this)
 {
-	if (argc != 3)
-		error_and_throw("Usage: ./ircserv <port> <password>");
-	char* end;
-	long port = std::strtol(argv[1], &end, 10);
-	if (*end != '\0' || port < 1024 || port > 65535)
-		error_and_throw("Error: invalid port number (1024-65535)");
-	if (std::strlen(argv[2]) == 0 || std::strlen(argv[2]) > 32 || std::strchr(argv[2], ' ') != NULL)
-		error_and_throw("Error: invalid password (1-32 characters, no spaces)");
-}
-
-Server::Server(int argc, char** argv) : _backlog(5), _cmdHandler(*this)
-{
-	checkArgs(argc, argv);
-	_port = std::atoi(argv[1]);
-	_password = argv[2];
-
 	_server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (_server_fd == -1)
 		perror_and_throw("socket");
@@ -33,14 +17,14 @@ Server::Server(int argc, char** argv) : _backlog(5), _cmdHandler(*this)
 	std::memset(&addr_server, 0, sizeof(addr_server));
 	addr_server.sin_family = AF_INET;
 	addr_server.sin_addr.s_addr = INADDR_ANY;
-	addr_server.sin_port = htons(_port);
+	addr_server.sin_port = htons(6667);
 
 	if (bind(_server_fd, (struct sockaddr*)&addr_server, sizeof(addr_server)) == -1)
 		perror_and_throw("bind");
 
 	if (listen(_server_fd, _backlog) == -1)
 		perror_and_throw("listen");
-	std::cout << "server is listening on port " << _port << "..." << std::endl;
+	std::cout << "server is listening on port 6667..." << std::endl;
 
 	struct pollfd p;
 	p.fd = _server_fd;

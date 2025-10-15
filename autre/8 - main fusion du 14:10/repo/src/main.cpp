@@ -2,11 +2,11 @@
 #include "Server.hpp"
 #include "Client.hpp"
 
-int main(int argc, char** argv)
+int main()
 {
 	try
 	{
-		Server server(argc, argv);
+		Server server;
 		set_signal_handlers();
 		while (g_stop_requested == 0)
 			server.run();

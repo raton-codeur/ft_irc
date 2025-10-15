@@ -30,7 +30,7 @@ fclean : clean
 re : fclean all
 
 test : re
-	./$(NAME) 6667 mypassword
+	./$(NAME)
 
 nc :
 	nc 127.0.0.1 6667
