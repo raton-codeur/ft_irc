@@ -1,6 +1,6 @@
 #include "Client.hpp"
 
-Client::Client(int fd) : _fd(fd), _hostname("localhost"), _registered(false)
+Client::Client(Server& server, int fd) : _server(server), _fd(fd), _hostname("localhost"), _registered(false)
 {
 	std::cout << "new client (fd " << fd << ")" << std::endl;
 }
@@ -64,4 +64,9 @@ bool Client::isInChannel(const std::string& name) const
 std::string Client::getPrefix() const
 {
 	return ":" + _nickname + "!" + _username + "@" + _hostname;
+}
+
+std::string& Client::getIn()
+{
+	return _in;
 }

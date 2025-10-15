@@ -1,10 +1,13 @@
 #pragma once
 #include "main.hpp"
 
+class Server;
+
 class Client
 {
 private:
 
+	Server& _server;
 	int _fd;
 	std::string _nickname;
 	std::string _username;
@@ -21,7 +24,7 @@ private:
 
 public:
 
-	Client(int fd);
+	Client(Server& server, int fd);
 	~Client();
 
 	int getFd() const;
@@ -35,4 +38,5 @@ public:
 	void removeFromChannel(const std::string& name);
 	bool isInChannel(const std::string& name) const;
 	std::string getPrefix() const;
+	std::string& getIn();
 };

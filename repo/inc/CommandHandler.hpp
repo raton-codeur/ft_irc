@@ -35,5 +35,5 @@ public:
 	CommandHandler(Server& server);
 	~CommandHandler();
 
-	void handleCommand(Client& client, const std::string& input);
+	void handleCommand(Client* client);
 };
