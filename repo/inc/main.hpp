@@ -6,8 +6,11 @@
 #include <list>
 #include <map>
 #include <vector>
+#include <set>
+#include <sstream>
 
 #include <cstdio>
+#include <cstring>
 #include <cerrno>
 #include <csignal>
 

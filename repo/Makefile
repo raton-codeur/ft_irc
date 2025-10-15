@@ -4,6 +4,8 @@ SRCS = $(addprefix src/, \
 	main.cpp \
 	Server.cpp \
 	Client.cpp \
+	Channel.cpp \
+	CommandHandler.cpp \
 	utils.cpp \
 	signal.cpp \
 )

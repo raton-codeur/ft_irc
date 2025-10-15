@@ -1,6 +1,6 @@
 #include "Server.hpp"
 
-Server::Server() : _backlog(5), _next_client_id(0)
+Server::Server() : _backlog(5), _cmdHandler(*this)
 {
 	_server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (_server_fd == -1)
@@ -14,6 +14,7 @@ Server::Server() : _backlog(5), _next_client_id(0)
 		perror_and_throw("setsockopt");
 
 	struct sockaddr_in addr_server;
+	std::memset(&addr_server, 0, sizeof(addr_server));
 	addr_server.sin_family = AF_INET;
 	addr_server.sin_addr.s_addr = INADDR_ANY;
 	addr_server.sin_port = htons(6667);
@@ -30,6 +31,8 @@ Server::Server() : _backlog(5), _next_client_id(0)
 	p.events = POLLIN;
 	p.revents = 0;
 	_poll_array.push_back(p);
+
+	_clients.push_back(nullptr);
 }
 
 Server::~Server()
@@ -39,15 +42,28 @@ Server::~Server()
 		close(_server_fd);
 		std::cout << "server : fd has been closed" << std::endl;
 	}
-	for (Iterator it = _clients.begin(); it != _clients.end(); ++it)
-		delete *it;
+	for (size_t i = 1; i < _clients.size(); ++i)
+		delete _clients[i];
+	for (std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+		delete it->second;
+}
+
+void Server::run()
+{
+	if (poll(&_poll_array[0], _poll_array.size(), -1) == -1)
+	{
+		if (errno == EINTR)
+			return;
+		else
+			perror_and_throw("poll");
+	}
+	acceptClients();
+	handleClientEvents();
 }
 
 void Server::addClient(int client_fd)
 {
-	_clients.push_back(new Client(_next_client_id, client_fd));
-	_clients_by_id[_next_client_id++] = _clients.back();
-	_clients_by_fd[client_fd] = _clients.back();
+	_clients.push_back(new Client(client_fd));
 
 	struct pollfd p;
 	p.fd = client_fd;
@@ -67,9 +83,10 @@ void Server::acceptClients()
 			int client_fd = accept(_server_fd, NULL, NULL);
 			if (client_fd == -1)
 			{
-				if (errno == EINTR || errno == ECONNABORTED) {}
-				if (errno == EAGAIN || errno == EWOULDBLOCK)
+				if (errno == EAGAIN || errno == EWOULDBLOCK || g_stop_requested)
 					break;
+				else if (errno == ECONNABORTED || errno == EINTR)
+					continue;
 				else
 					perror_and_throw("accept");
 			}
@@ -83,49 +100,85 @@ void Server::acceptClients()
 	}
 }
 
-void Server::run()
+void Server::deleteClient(Client* client, int i)
 {
-	if (poll(&_poll_array[0], _poll_array.size(), -1) == -1)
-	{
-		if (errno == EINTR)
-			return;
-		else
-			perror_and_throw("poll");
-	}
-	acceptClients();
+	_clients[i] = _clients.back();
+	_clients.pop_back();
+	_poll_array[i] = _poll_array.back();
+	_poll_array.pop_back();
+	delete client;
+}
 
-
-	// à modifier :
+void Server::handleClientEvents()
+{
 	int n;
 	char buffer[1024];
-	std::string s = "message from server: ok\n";
-	Client* client;
-	for (Iterator it = _clients.begin(); it != _clients.end(); )
+	for (size_t i = 1; i < _poll_array.size(); )
 	{
-		client = *it;
-		n = recv(client->getFd(), buffer, sizeof(buffer), 0);
-		if (n == 0)
+		if (_poll_array[i].revents & (POLLHUP | POLLERR | POLLNVAL))
 		{
-			std::cout << "client " << client->getId() << ": disconnected" << std::endl;
-			_clients_by_id.erase(client->getId());
-			_clients_by_fd.erase(client->getFd());
-			it = _clients.erase(it);
-			delete client;
-			continue;
-		}
-		else if (n == -1)
-		{
-			if (errno == EAGAIN || errno == EWOULDBLOCK) {} // pas de données envoyées mais la connexion est toujours là
+			if (_poll_array[i].revents & POLLHUP)
+				std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected" << std::endl;
+			else if (_poll_array[i].revents & POLLERR)
+				std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (network error)" << std::endl;
 			else
-				perror_and_throw("recv");
+				std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (invalid fd)" << std::endl;
+			deleteClient(_clients[i], i);
+		}
+		else if (_poll_array[i].revents & POLLIN)
+		{
+			while (true)
+			{
+				n = recv(_clients[i]->getFd(), buffer, sizeof(buffer), 0);
+				if (n == -1)
+				{
+					if (g_stop_requested)
+						return;
+					else if (errno == EAGAIN || errno == EWOULDBLOCK)
+						++i;
+					else if (errno == EINTR)
+						continue;
+					else
+					{
+						std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (error)" << std::endl;
+						deleteClient(_clients[i], i);
+					}
+				}
+				else if (n == 0)
+				{
+					std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected" << std::endl;
+					deleteClient(_clients[i], i);
+				}
+				else
+				{
+					std::cout << "message from client (fd " << _clients[i]->getFd() << "): ";
+					std::cout.write(buffer, n);
+					++i;
+				}
+				break;
+			}
 		}
 		else
-		{
-			std::cout << "message from client " << client->getId() << ": ";
-			std::cout.write(buffer, n);
-			if (send(client->getFd(), s.c_str(), s.size(), 0) == -1)
-				perror_and_throw("send");
-		}
-		++it;
+			++i;
 	}
+}
+
+Channel* Server::getChannel(const std::string& name)
+{
+	std::map<std::string, Channel*>::iterator it = _channels.find(name);
+	if (it != _channels.end())
+		return it->second;
+	return NULL;
+}
+
+Channel* Server::getOrCreateChannel(const std::string& name)
+{
+	Channel* channel = getChannel(name);
+	if (!channel)
+	{
+		channel = new Channel(name);
+		_channels[name] = channel;
+		std::cout << "channel " << name << ": created" << std::endl;
+	}
+	return channel;
 }
