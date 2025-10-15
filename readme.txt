@@ -21,7 +21,7 @@ la fonction register passe définitivement le client en registered
 
 cmdHandler : pas besoin de new
 
-port et password dans le serveur à init dans le constructeur du serveur
+port et password dans le serveur, init dans le constructeur
 
 une map clients_by_nick pour optimiser ? apparemment c'est ce qui se fait le plus.
 ajouter le client qui correspond au nickname lorsqu'on set le nickname
