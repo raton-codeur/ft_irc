@@ -1,5 +1,15 @@
 #include "Server.hpp"
 
+static bool has_white_spaces(const std::string& str)
+{
+	for (size_t i = 0; i < str.size(); ++i)
+	{
+		if (std::isspace(str[i]))
+			return true;
+	}
+	return false;
+}
+
 static void checkArgs(int argc, char** argv)
 {
 	if (argc != 3)
@@ -7,9 +17,9 @@ static void checkArgs(int argc, char** argv)
 	char* end;
 	long port = std::strtol(argv[1], &end, 10);
 	if (*end != '\0' || port < 1024 || port > 65535)
-		error_and_throw("Error: invalid port number (1024-65535)");
-	if (std::strlen(argv[2]) == 0 || std::strlen(argv[2]) > 32 || std::strchr(argv[2], ' ') != NULL)
-		error_and_throw("Error: invalid password (1-32 characters, no spaces)");
+		error_and_throw("Error: invalid port number (must be an integer between 1024 and 65535)");
+	if (std::strlen(argv[2]) == 0 || std::strlen(argv[2]) > 32 || has_white_spaces(argv[2]))
+		error_and_throw("Error: invalid password (must be 1-32 characters long, no whitespaces)");
 }
 
 Server::Server(int argc, char** argv) : _backlog(5), _cmdHandler(*this)
