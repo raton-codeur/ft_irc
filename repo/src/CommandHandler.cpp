@@ -45,15 +45,21 @@ static std::string toUpper(std::string& s)
     return result;
 }
 
-void CommandHandler::handleCommand(Client& client, const std::string& input)
+void CommandHandler::handleCommand(Client* client)
 {
-	std::vector<std::string> args = _split(input);
+	std::string line;
+	std::stringstream ss(client->getIn());
+	std::getline(ss, line);
+	client->getIn() = client->getIn().substr(line.size() + 1);
+	std::vector<std::string> args = _split(line);
+	for (size_t i = 0; i < args.size(); ++i)
+		std::cout << "arg[" << i << "] = " << args[i] << std::endl;
 	if (args.empty())
 		return;
 	std::string cmd = toUpper(args[0]);
 	std::map<std::string, CommandFunction>::iterator it = _commands.find(cmd);
 	if (it != _commands.end())
-		(this->*(it->second))(client, args);
+		(this->*(it->second))(*client, args);
 	else
 		std::cout << args[0] << " :Unknown command" << std::endl;
 }

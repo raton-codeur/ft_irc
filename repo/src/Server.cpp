@@ -79,7 +79,7 @@ void Server::run()
 
 void Server::addClient(int client_fd)
 {
-	_clients.push_back(new Client(client_fd));
+	_clients.push_back(new Client(*this, client_fd));
 
 	struct pollfd p;
 	p.fd = client_fd;
@@ -167,8 +167,9 @@ void Server::handleClientEvents()
 				}
 				else
 				{
-					std::cout << "message from client (fd " << _clients[i]->getFd() << "): ";
-					std::cout.write(buffer, n);
+					_clients[i]->getIn().append(buffer, n);
+					std::cout << "reçu dans le buffer in du client : " << _clients[i]->getIn() << std::endl;
+					_cmdHandler.handleCommand(_clients[i]);
 					++i;
 				}
 				break;
