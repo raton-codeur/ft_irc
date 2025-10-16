@@ -13,6 +13,7 @@ private:
 	int _port;
 	std::string _password;
 	int _server_fd;
+	std::string _hostname;
 	std::vector<Client*> _clients;
 	std::vector<struct pollfd> _poll_array;
 	std::map<std::string, Client*> _clients_by_nick;
@@ -39,5 +40,6 @@ private:
 	void removeClientFromNickMap(const std::string &nick);
 	std::string getPassword() const;
 	void notifyClients(const std::set<std::string> &channels, const std::string &message, Client *exclude);
+	std::string getHostname() const;
 	void run();
 };

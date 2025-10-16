@@ -69,17 +69,17 @@ void CommandHandler::pass(Client& client, const std::vector<std::string>& args)
 	std::cout << "PASS command received" << std::endl;
 	if (client.isRegistered())
 	{
-		client.sendMessage("462 " + client.getNickname() + " :You may not reregister");
+		client.sendMessage(":" + _server.getHostname() + " 462 " + client.getNickname() + " :You may not reregister");
 		return;
 	}
 	if (args.size() < 2)
 	{
-		client.sendMessage("461 PASS :Not enough parameters");
+		client.sendMessage(":" + _server.getHostname() + " 461 PASS :Not enough parameters");
 		return;
 	}
 	if (args[1] != client.getServer().getPassword())
 	{
-		client.sendMessage("464 :Password incorrect");
+		client.sendMessage(":" + _server.getHostname() + " 464 :Password incorrect");
 		client.markToDisconnect(); //flag pour deconnecter le client depuis Server.cpp
 		return;
 	}
@@ -111,18 +111,18 @@ void CommandHandler::nick(Client& client, const std::vector<std::string>& args)
 	std::cout << "NICK command received" << std::endl;
 	if (args.size() < 2)
 	{
-		client.sendMessage("431 :No nickname given");
+		client.sendMessage(":" + _server.getHostname() + " 431 :No nickname given");
 		return;
 	}
 	std::string new_nick = args[1];
 	if (!isValidNickname(new_nick))
 	{
-		client.sendMessage("432 " + new_nick + " :Erroneous nickname");
+		client.sendMessage(":" + _server.getHostname() + " 432 " + new_nick + " :Erroneous nickname");
 		return;
 	}
 	if (_server.getClientByNick(new_nick) != nullptr)
 	{
-		client.sendMessage("433 " + new_nick + " :Nickname is already in use");
+		client.sendMessage(":" + _server.getHostname() + " 433 " + new_nick + " :Nickname is already in use");
 		return;
 	}
 	std::string old_nick = client.getNickname();
@@ -133,9 +133,10 @@ void CommandHandler::nick(Client& client, const std::vector<std::string>& args)
 	if (client.hasUsername() && client.isPasswordOk() && !client.isRegistered())
 	{
 		client.setRegistered();
-		client.sendMessage("001 " + client.getNickname() + " :Welcome to the IRC network By Qhauuy & Jteste");
+		client.sendMessage(":" + _server.getHostname() + " 001 " + client.getNickname() + " :Welcome to the IRC network By Qhauuy & Jteste");
 	}
-	_server.notifyClients(client.getChannels(), ":" + old_nick + " NICK :" + new_nick, &client);
+	std::string msg = ":" + old_nick + "!" + client.getUsername() + "@" + client.getHostname() + " NICK :" + new_nick;
+	_server.notifyClients(client.getChannels(), msg, &client);
 }
 
 void CommandHandler::user(Client& client, const std::vector<std::string>& args)
@@ -143,12 +144,12 @@ void CommandHandler::user(Client& client, const std::vector<std::string>& args)
 	std::cout << "USER command received" << std::endl;
 	if (client.isRegistered())
 	{
-		client.sendMessage("462 " + client.getNickname() + " :You may not reregister");
+		client.sendMessage(":" + _server.getHostname() + " 462 " + client.getNickname() + " :You may not reregister");
 		return;
 	}
 	if(args.size() < 5)
 	{
-		client.sendMessage("461 USER :Not enough parameters");
+		client.sendMessage(":" + _server.getHostname() + " 461 USER :Not enough parameters");
 		return;
 	}
 	std::string username = args[1];
@@ -162,7 +163,7 @@ void CommandHandler::user(Client& client, const std::vector<std::string>& args)
 	if (!client.getNickname().empty() && client.isPasswordOk() && !client.isRegistered())
 	{
 		client.setRegistered();
-		client.sendMessage("001 " + client.getNickname() + " :Welcome to the IRC network By Qhauuy & Jteste");
+		client.sendMessage(":" + _server.getHostname() + " 001 " + client.getNickname() + " :Welcome to the IRC network By Qhauuy & Jteste");
 	}
 }
 

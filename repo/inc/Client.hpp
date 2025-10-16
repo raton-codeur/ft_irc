@@ -37,6 +37,7 @@ public:
 	void setRealname(const std::string& realname);
 	const std::string& getNickname() const;
 	void setNickname(const std::string& nickname);
+	std::string getHostname() const;
 	bool isRegistered() const;
 	void setRegistered();
 	void addToChannel(const std::string& name);

@@ -26,6 +26,11 @@ void Client::setNickname(const std::string& nickname)
 	_nickname = nickname;
 }
 
+std::string Client::getHostname() const
+{
+	return _hostname;
+}
+
 const std::string& Client::getUsername() const
 {
 	return _username;

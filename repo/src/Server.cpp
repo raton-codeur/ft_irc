@@ -22,7 +22,7 @@ static void checkArgs(int argc, char** argv)
 		error_and_throw("Error: invalid password (must be 1-32 characters long, no whitespaces)");
 }
 
-Server::Server(int argc, char** argv) : _backlog(5), _cmdHandler(*this)
+Server::Server(int argc, char** argv) : _backlog(5), _hostname("irc.qhauuy-jteste.local"), _cmdHandler(*this)
 {
 	checkArgs(argc, argv);
 	_port = std::atoi(argv[1]);
@@ -279,4 +279,9 @@ void Server::notifyClients(const std::set<std::string> &channels, const std::str
 				(*mit)->sendMessage(message);
 		}
 	}
+}
+
+std::string Server::getHostname() const
+{
+	return _hostname;
 }
