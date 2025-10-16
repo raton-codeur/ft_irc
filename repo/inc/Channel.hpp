@@ -47,4 +47,5 @@ public:
 	void invite(Client* client);
 	void removeInvite(Client* client);
 	bool isInvited(Client* client) const;
+	const std::set<Client*>& getClients() const;
 };

@@ -74,6 +74,11 @@ Server::~Server()
 		delete it->second;
 }
 
+std::string Server::getPassword() const
+{
+	return _password;
+}
+
 void Server::run()
 {
 	if (poll(&_poll_array[0], _poll_array.size(), -1) == -1)
@@ -135,6 +140,36 @@ void Server::deleteClient(Client* client, int i)
 	delete client;
 }
 
+void Server::processClientBuffer(Client *client)
+{
+	std::string &in = client->getIn();
+	size_t pos;
+
+	while (true)
+	{
+		pos = in.find("\r\n");
+		if (pos == std::string::npos)
+			pos = in.find('\n'); 
+
+		if (pos == std::string::npos)
+			break;
+
+		std::string line = in.substr(0, pos);
+
+		if (!line.empty() && line[line.size() - 1] == '\r')
+			line.erase(line.size() - 1);
+
+		in.erase(0, pos + ((in[pos] == '\r' && in[pos + 1] == '\n') ? 2 : 1));
+
+		if (line.empty())
+			continue;
+
+		std::cout << "→ Command received: [" << line << "]" << std::endl;
+
+		_cmdHandler.handleCommand(client, line);
+	}
+}
+
 void Server::handleClientEvents()
 {
 	int n;
@@ -179,7 +214,7 @@ void Server::handleClientEvents()
 				{
 					_clients[i]->getIn().append(buffer, n);
 					std::cout << "reçu dans le buffer in du client : " << _clients[i]->getIn() << std::endl;
-					_cmdHandler.handleCommand(_clients[i]);
+					processClientBuffer(_clients[i]);
 					++i;
 				}
 				break;
@@ -208,4 +243,40 @@ Channel* Server::getOrCreateChannel(const std::string& name)
 		std::cout << "channel " << name << ": created" << std::endl;
 	}
 	return channel;
+}
+
+Client *Server::getClientByNick(const std::string &nick)
+{
+	std::map<std::string, Client*>::iterator it = _clients_by_nick.find(nick);
+	if (it != _clients_by_nick.end())
+		return it->second;
+	return nullptr;
+}
+
+void Server::addClientToNickMap(const std::string &nick, Client *client)
+{
+	_clients_by_nick[nick] = client;
+}
+
+void Server::removeClientFromNickMap(const std::string &nick)
+{
+	std::map<std::string, Client*>::iterator it = _clients_by_nick.find(nick);
+	if (it != _clients_by_nick.end())
+		_clients_by_nick.erase(it);
+}
+
+void Server::notifyClients(const std::set<std::string> &channels, const std::string &message, Client *exclude = NULL)
+{
+	for (std::set<std::string>::const_iterator it = channels.begin(); it != channels.end(); ++it)
+	{
+		Channel *chan = getChannel(*it);
+		if (!chan) continue;
+
+		const std::set<Client*> &members = chan->getClients();
+		for (std::set<Client*>::const_iterator mit = members.begin(); mit != members.end(); ++mit)
+		{
+			if (*mit != exclude)
+				(*mit)->sendMessage(message);
+		}
+	}
 }

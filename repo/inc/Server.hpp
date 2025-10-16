@@ -23,17 +23,21 @@ private:
 	void acceptClients();
 	void deleteClient(Client* client, int i);
 	void handleClientEvents();
-	Channel* getChannel(const std::string& name);
-	Channel* getOrCreateChannel(const std::string& name);
-
+	void processClientBuffer(Client* client);
 	Server();
 	Server(const Server&);
 	Server& operator=(const Server&);
-
-public:
-
+	
+	public:
+	
 	Server(int argc, char** argv);
 	~Server();
-
+	Channel* getChannel(const std::string& name);
+	Channel* getOrCreateChannel(const std::string& name);
+	Client* getClientByNick(const std::string& nick);
+	void addClientToNickMap(const std::string &nick, Client *client);
+	void removeClientFromNickMap(const std::string &nick);
+	std::string getPassword() const;
+	void notifyClients(const std::set<std::string> &channels, const std::string &message, Client *exclude);
 	void run();
 };

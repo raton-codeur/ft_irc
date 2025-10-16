@@ -1,5 +1,6 @@
 #include "CommandHandler.hpp"
 #include "main.hpp"
+#include "Server.hpp"
 
 CommandHandler::CommandHandler(Server& server) : _server(server)
 {
@@ -45,15 +46,14 @@ static std::string toUpper(std::string& s)
     return result;
 }
 
-void CommandHandler::handleCommand(Client* client)
+
+
+void CommandHandler::handleCommand(Client *client, std::string line)
 {
-	std::string line;
-	std::stringstream ss(client->getIn());
-	std::getline(ss, line);
-	client->getIn() = client->getIn().substr(line.size() + 1);
 	std::vector<std::string> args = _split(line);
+
 	for (size_t i = 0; i < args.size(); ++i)
-		std::cout << "arg[" << i << "] = " << args[i] << std::endl;
+		std::cout << "Arg " << i << ": [" << args[i] << "]" << std::endl;
 	if (args.empty())
 		return;
 	std::string cmd = toUpper(args[0]);
@@ -66,23 +66,104 @@ void CommandHandler::handleCommand(Client* client)
 
 void CommandHandler::pass(Client& client, const std::vector<std::string>& args)
 {
-	(void)client;
-	(void)args;
 	std::cout << "PASS command received" << std::endl;
+	if (client.isRegistered())
+	{
+		client.sendMessage("462 " + client.getNickname() + " :You may not reregister");
+		return;
+	}
+	if (args.size() < 2)
+	{
+		client.sendMessage("461 PASS :Not enough parameters");
+		return;
+	}
+	if (args[1] != client.getServer().getPassword())
+	{
+		client.sendMessage("464 :Password incorrect");
+		client.markToDisconnect(); //flag pour deconnecter le client depuis Server.cpp
+		return;
+	}
+	client.setPasswordOk(); //le mot de passe est correct on peut continuer
+}
+
+static bool isValidNickname(const std::string& nickname)
+{
+	if (nickname.empty() || nickname.size() > 9)
+		return false;
+	char first = nickname[0];
+	if (!std::isalpha(static_cast<unsigned char>(first)) &&
+		first != '[' && first != ']' && first != '\\' && first != '^' &&
+		first != '{' && first != '}' && first != '-' )
+		return false;
+	for (size_t i = 1; i < nickname.size(); ++i)
+	{
+		char c = nickname[i];
+		if (!std::isalnum(static_cast<unsigned char>(c)) &&
+			c != '[' && c != ']' && c != '\\' && c != '^' &&
+			c != '{' && c != '}' && c != '-' )
+			return false;
+	}
+	return true;
 }
 
 void CommandHandler::nick(Client& client, const std::vector<std::string>& args)
 {
-	(void)client;
-	(void)args;
 	std::cout << "NICK command received" << std::endl;
+	if (args.size() < 2)
+	{
+		client.sendMessage("431 :No nickname given");
+		return;
+	}
+	std::string new_nick = args[1];
+	if (!isValidNickname(new_nick))
+	{
+		client.sendMessage("432 " + new_nick + " :Erroneous nickname");
+		return;
+	}
+	if (_server.getClientByNick(new_nick) != nullptr)
+	{
+		client.sendMessage("433 " + new_nick + " :Nickname is already in use");
+		return;
+	}
+	std::string old_nick = client.getNickname();
+	if (!old_nick.empty())
+		_server.removeClientFromNickMap(old_nick);
+	client.setNickname(new_nick);
+	_server.addClientToNickMap(new_nick, &client);
+	if (client.hasUsername() && client.isPasswordOk() && !client.isRegistered())
+	{
+		client.setRegistered();
+		client.sendMessage("001 " + client.getNickname() + " :Welcome to the IRC network By Qhauuy & Jteste");
+	}
+	_server.notifyClients(client.getChannels(), ":" + old_nick + " NICK :" + new_nick, &client);
 }
 
 void CommandHandler::user(Client& client, const std::vector<std::string>& args)
 {
-	(void)client;
-	(void)args;
 	std::cout << "USER command received" << std::endl;
+	if (client.isRegistered())
+	{
+		client.sendMessage("462 " + client.getNickname() + " :You may not reregister");
+		return;
+	}
+	if(args.size() < 5)
+	{
+		client.sendMessage("461 USER :Not enough parameters");
+		return;
+	}
+	std::string username = args[1];
+	std::string realname;
+	if (!args[4].empty() && args[4][0] == ':')
+		realname = args[4].substr(1);
+	else
+		realname = args[4];
+	client.setUsername(username);
+	client.setRealname(realname);
+	if (!client.getNickname().empty() && client.isPasswordOk() && !client.isRegistered())
+	{
+		client.setRegistered();
+		client.sendMessage("001 " + client.getNickname() + " :Welcome to the IRC network By Qhauuy & Jteste");
+	}
 }
 
 void CommandHandler::join(Client& client, const std::vector<std::string>& args)

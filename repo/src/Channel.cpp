@@ -76,9 +76,14 @@ bool Channel::isInvited(Client *client) const
 	return (_invited.find(client) != _invited.end());
 }
 
+
 void Channel::removeInvite(Client *client)
 {
 	_invited.erase(client);
 }
 
+const std::set<Client *> &Channel::getClients() const
+{
+	return _members;
+}
 
