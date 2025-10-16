@@ -74,123 +74,7 @@ Server::~Server()
 		delete it->second;
 }
 
-void Server::run()
-{
-	if (poll(&_poll_array[0], _poll_array.size(), -1) == -1)
-	{
-		if (errno == EINTR)
-			return;
-		else
-			perror_and_throw("poll");
-	}
-	acceptClients();
-	handleClientEvents();
-}
-
-void Server::addClient(int client_fd)
-{
-	_clients.push_back(new Client(*this, client_fd));
-
-	struct pollfd p;
-	p.fd = client_fd;
-	p.events = POLLIN;
-	p.revents = 0;
-	_poll_array.push_back(p);
-}
-
-void Server::acceptClients()
-{
-	if (_poll_array[0].revents & (POLLHUP | POLLERR | POLLNVAL))
-		error_and_throw("server socket error");
-	if (_poll_array[0].revents & POLLIN)
-	{
-		while (true)
-		{
-			int client_fd = accept(_server_fd, NULL, NULL);
-			if (client_fd == -1)
-			{
-				if (errno == EAGAIN || errno == EWOULDBLOCK || g_stop_requested)
-					break;
-				else if (errno == ECONNABORTED || errno == EINTR)
-					continue;
-				else
-					perror_and_throw("accept");
-			}
-			else
-			{
-				if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
-					perror_and_throw("fcntl (client)");
-				addClient(client_fd);
-			}
-		}
-	}
-}
-
-void Server::deleteClient(Client* client, int i)
-{
-	_clients[i] = _clients.back();
-	_clients.pop_back();
-	_poll_array[i] = _poll_array.back();
-	_poll_array.pop_back();
-	delete client;
-}
-
-void Server::handleClientEvents()
-{
-	int n;
-	char buffer[1024];
-	for (size_t i = 1; i < _poll_array.size(); )
-	{
-		if (_poll_array[i].revents & (POLLHUP | POLLERR | POLLNVAL))
-		{
-			if (_poll_array[i].revents & POLLHUP)
-				std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected" << std::endl;
-			else if (_poll_array[i].revents & POLLERR)
-				std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (network error)" << std::endl;
-			else
-				std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (invalid fd)" << std::endl;
-			deleteClient(_clients[i], i);
-		}
-		else if (_poll_array[i].revents & POLLIN)
-		{
-			while (true)
-			{
-				n = recv(_clients[i]->getFd(), buffer, sizeof(buffer), 0);
-				if (n == -1)
-				{
-					if (g_stop_requested)
-						return;
-					else if (errno == EAGAIN || errno == EWOULDBLOCK)
-						++i;
-					else if (errno == EINTR)
-						continue;
-					else
-					{
-						std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (error)" << std::endl;
-						deleteClient(_clients[i], i);
-					}
-				}
-				else if (n == 0)
-				{
-					std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected" << std::endl;
-					deleteClient(_clients[i], i);
-				}
-				else
-				{
-					_clients[i]->getIn().append(buffer, n);
-					std::cout << "reçu dans le buffer in du client : " << _clients[i]->getIn() << std::endl;
-					_cmdHandler.handleCommand(_clients[i]);
-					++i;
-				}
-				break;
-			}
-		}
-		else
-			++i;
-	}
-}
-
-Channel* Server::getChannel(const std::string& name)
+Channel* Server::getChannel(const std::string& name) const
 {
 	std::map<std::string, Channel*>::iterator it = _channels.find(name);
 	if (it != _channels.end())
@@ -208,4 +92,126 @@ Channel* Server::getOrCreateChannel(const std::string& name)
 		std::cout << "channel " << name << ": created" << std::endl;
 	}
 	return channel;
+}
+
+void Server::run()
+{
+	if (poll(&_poll_array[0], _poll_array.size(), -1) == -1)
+	{
+		if (errno == EINTR)
+			return;
+		else
+			perror_and_throw("poll");
+	}
+	acceptClients();
+	if (g_stop_requested)
+		return;
+	handleClientsEvents();
+}
+
+void Server::addClient(int client_fd)
+{
+	_clients.push_back(new Client(*this, client_fd));
+
+	struct pollfd p;
+	p.fd = client_fd;
+	p.events = POLLIN;
+	p.revents = 0;
+	_poll_array.push_back(p);
+}
+
+void Server::acceptClients()
+{
+	int client_fd;
+
+	if (_poll_array[0].revents & (POLLHUP | POLLERR | POLLNVAL))
+		error_and_throw("server socket error");
+	if (_poll_array[0].revents & POLLIN)
+	{
+		while (true)
+		{
+			client_fd = accept(_server_fd, NULL, NULL);
+			if (g_stop_requested)
+				return;
+			if (client_fd != -1)
+			{
+				if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
+					perror_and_throw("fcntl (client)");
+				addClient(client_fd);
+			}
+			else if (errno == EAGAIN || errno == EWOULDBLOCK)
+				break;
+			else if (errno == ECONNABORTED || errno == EINTR)
+				continue;
+			else
+				perror_and_throw("accept");
+		}
+	}
+}
+
+void Server::deleteClient(size_t i)
+{
+	delete _clients[i];
+	_clients[i] = _clients.back();
+	_clients.pop_back();
+	_poll_array[i] = _poll_array.back();
+	_poll_array.pop_back();
+}
+
+void Server::handleClientErrors(size_t i)
+{
+	if (_poll_array[i].revents & POLLNVAL)
+		std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (invalid fd)" << std::endl;
+	else if (_poll_array[i].revents & POLLERR)
+		std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (network error)" << std::endl;
+	else
+		std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected" << std::endl;
+	deleteClient(i);
+}
+
+void Server::handleClientPOLLIN(size_t& i)
+{
+	ssize_t n;
+	while (_poll_array[i].revents & POLLIN)
+	{
+		do
+			n = recv(_clients[i]->getFd(), _buffer_recv, sizeof(_buffer_recv), 0);
+		while (n == -1 && errno == EINTR);
+		if (g_stop_requested)
+			return;
+		if (n > 0)
+		{
+			_clients[i]->getIn().append(_buffer_recv, n);
+			_cmdHandler.handleCommand(_clients[i]);
+		}
+		else if (n == 0)
+		{
+			std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected" << std::endl;
+			deleteClient(i);
+			return;
+		}
+		else if (errno == EAGAIN || errno == EWOULDBLOCK)
+			break;
+		else
+		{
+			std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (error)" << std::endl;
+			deleteClient(i);
+		}
+	}
+	++i;
+}
+
+void Server::handleClientsEvents()
+{
+	for (size_t i = 1; i < _poll_array.size();)
+	{
+		if (_poll_array[i].revents & (POLLHUP | POLLERR | POLLNVAL))
+			handleClientErrors(i);
+		else if (_poll_array[i].revents & POLLIN)
+			handleClientPOLLIN(i);
+		else if (g_stop_requested)
+			return;
+		else
+			++i;
+	}
 }

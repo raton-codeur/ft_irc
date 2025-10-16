@@ -1,6 +1,5 @@
 -
 
-pas de white spaces dans le mot de passe
 
 
 
