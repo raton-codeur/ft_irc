@@ -16,6 +16,7 @@ private:
 	bool _registered;
 	bool _password_ok;
 	bool _to_disconnect;
+	bool _welcome_sent;
 	std::string _in;
 	std::string _out;
 	std::set<std::string> _channels;
@@ -51,6 +52,9 @@ public:
 	std::string& getIn();
 	Server& getServer();
 	const std::set<std::string>& getChannels() const;
-
-	void sendMessage(const std::string &message) const;
+	bool isReadyforWelcome() const;
+	void sendWelcome(const std::string& hostname);
+	void sendMessage(const std::string& message) const;
+	bool hasWelcomeBeenSent() const;
+	void markWelcomeSent();
 };

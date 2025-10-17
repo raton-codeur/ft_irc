@@ -1,6 +1,6 @@
 #include "Client.hpp"
 
-Client::Client(Server& server, int fd) : _server(server), _fd(fd), _hostname("localhost"), _registered(false), _password_ok(false), _to_disconnect(false)
+Client::Client(Server& server, int fd) : _server(server), _fd(fd), _hostname("localhost"), _registered(false), _password_ok(false), _to_disconnect(false), _welcome_sent(false)
 {
 	std::cout << "new client (fd " << fd << ")" << std::endl;
 }
@@ -120,9 +120,34 @@ const std::set<std::string> &Client::getChannels() const
 	return _channels;
 }
 
+bool Client::isReadyforWelcome() const
+{
+	return (!isRegistered() && hasUsername() && !getNickname().empty() && isPasswordOk());
+}
+
+void Client::sendWelcome(const std::string &hostname)
+{
+	if (isReadyforWelcome() && !hasWelcomeBeenSent())
+	{
+		setRegistered();
+		sendMessage(":" + hostname + " 001 " + getNickname() + " :Welcome to the IRC network " + hostname);
+		markWelcomeSent();
+	}
+}
+
 void Client::sendMessage(const std::string &message) const
 {
 	std::string msg = message + "\r\n";
 	if (send(_fd, msg.c_str(), msg.size(), 0) == -1)
 		std::cerr << "Failed to send message to client fd " << _fd << std::endl;
+}
+
+bool Client::hasWelcomeBeenSent() const
+{
+	return _welcome_sent;
+}
+
+void Client::markWelcomeSent()
+{
+	_welcome_sent = true;
 }

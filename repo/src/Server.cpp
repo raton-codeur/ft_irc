@@ -253,7 +253,40 @@ void Server::notifyClients(const std::set<std::string> &channels, const std::str
 	}
 }
 
+void Server::notifyClients(Channel *channel, const std::string &message, Client *exclude)
+{
+	if (!channel)
+		return;
+
+	const std::set<Client*> &members = channel->getClients();
+	for (std::set<Client*>::const_iterator it = members.begin(); it != members.end(); ++it)
+	{
+		if (*it != exclude)
+			(*it)->sendMessage(message);
+	}
+}
+
 std::string Server::getHostname() const
 {
 	return _hostname;
+}
+
+void Server::sendNamesList(Client &client, Channel *channel)
+{
+		if (!channel)
+		return;
+
+	std::string names;
+	const std::set<Client*> &members = channel->getClients();
+
+	for (std::set<Client*>::const_iterator it = members.begin(); it != members.end(); ++it)
+	{
+		if (!names.empty())
+			names += " ";
+		if (channel->isOperator(*it))
+			names += "@";
+		names += (*it)->getNickname();
+	}
+	client.sendMessage(":" + _hostname + " 353 " + client.getNickname() + " = " + channel->getName() + " :" + names);
+	client.sendMessage(":" + _hostname + " 366 " + client.getNickname() + " " +channel->getName() + " :End of /NAMES list");
 }

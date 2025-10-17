@@ -40,6 +40,10 @@ private:
 	void removeClientFromNickMap(const std::string &nick);
 	std::string getPassword() const;
 	void notifyClients(const std::set<std::string> &channels, const std::string &message, Client *exclude);
+	void notifyClients(Channel *channel, const std::string &message, Client *exclude);
 	std::string getHostname() const;
+
+	void sendNamesList(Client &client, Channel *channel);
+
 	void run();
 };
