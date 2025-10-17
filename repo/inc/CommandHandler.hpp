@@ -36,4 +36,5 @@ public:
 	~CommandHandler();
 
 	void handleCommand(Client* client, std::string line);
+	void processClientBuffer(Client *client, CommandHandler &cmdHandler);
 };

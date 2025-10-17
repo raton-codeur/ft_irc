@@ -46,7 +46,35 @@ static std::string toUpper(std::string& s)
     return result;
 }
 
+void CommandHandler::processClientBuffer(Client *client , CommandHandler &cmdHandler)
+{
+	std::string &in = client->getIn();
+	size_t pos;
 
+	while (true)
+	{
+		pos = in.find("\r\n");
+		if (pos == std::string::npos)
+			pos = in.find('\n'); 
+
+		if (pos == std::string::npos)
+			break;
+
+		std::string line = in.substr(0, pos);
+
+		if (!line.empty() && line[line.size() - 1] == '\r')
+			line.erase(line.size() - 1);
+
+		in.erase(0, pos + ((in[pos] == '\r' && in[pos + 1] == '\n') ? 2 : 1));
+
+		if (line.empty())
+			continue;
+
+		std::cout << "→ Command received: [" << line << "]" << std::endl;
+
+		cmdHandler.handleCommand(client, line);
+	}
+}
 
 void CommandHandler::handleCommand(Client *client, std::string line)
 {
@@ -66,7 +94,6 @@ void CommandHandler::handleCommand(Client *client, std::string line)
 
 void CommandHandler::pass(Client& client, const std::vector<std::string>& args)
 {
-	std::cout << "PASS command received" << std::endl;
 	if (client.isRegistered())
 	{
 		client.sendMessage(":" + _server.getHostname() + " 462 " + client.getNickname() + " :You may not reregister");
@@ -80,10 +107,10 @@ void CommandHandler::pass(Client& client, const std::vector<std::string>& args)
 	if (args[1] != client.getServer().getPassword())
 	{
 		client.sendMessage(":" + _server.getHostname() + " 464 :Password incorrect");
-		client.markToDisconnect(); //flag pour deconnecter le client depuis Server.cpp
+		client.markToDisconnect();
 		return;
 	}
-	client.setPasswordOk(); //le mot de passe est correct on peut continuer
+	client.setPasswordOk();
 }
 
 static bool isValidNickname(const std::string& nickname)

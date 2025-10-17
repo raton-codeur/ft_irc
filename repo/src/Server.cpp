@@ -140,35 +140,7 @@ void Server::deleteClient(Client* client, int i)
 	delete client;
 }
 
-void Server::processClientBuffer(Client *client)
-{
-	std::string &in = client->getIn();
-	size_t pos;
 
-	while (true)
-	{
-		pos = in.find("\r\n");
-		if (pos == std::string::npos)
-			pos = in.find('\n'); 
-
-		if (pos == std::string::npos)
-			break;
-
-		std::string line = in.substr(0, pos);
-
-		if (!line.empty() && line[line.size() - 1] == '\r')
-			line.erase(line.size() - 1);
-
-		in.erase(0, pos + ((in[pos] == '\r' && in[pos + 1] == '\n') ? 2 : 1));
-
-		if (line.empty())
-			continue;
-
-		std::cout << "→ Command received: [" << line << "]" << std::endl;
-
-		_cmdHandler.handleCommand(client, line);
-	}
-}
 
 void Server::handleClientEvents()
 {
@@ -214,7 +186,7 @@ void Server::handleClientEvents()
 				{
 					_clients[i]->getIn().append(buffer, n);
 					std::cout << "reçu dans le buffer in du client : " << _clients[i]->getIn() << std::endl;
-					processClientBuffer(_clients[i]);
+					this->_cmdHandler.processClientBuffer(_clients[i], this->_cmdHandler);
 					++i;
 				}
 				break;
