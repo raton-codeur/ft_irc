@@ -19,10 +19,13 @@
 #include <fcntl.h>
 #include <poll.h>
 
+struct StopRequested {};
+
 extern volatile sig_atomic_t g_stop_requested;
 
-// signal.cpp
+// signals.cpp
 void set_signal_handlers();
+void checkSignals();
 
 // utils.cpp
 void perror_and_throw(const char* message);

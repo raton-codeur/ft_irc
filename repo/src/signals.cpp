@@ -30,3 +30,9 @@ void set_signal_handlers()
 	if (sigaction(SIGPIPE, &sa_ign, NULL) == -1)
 		perror_and_throw("sigaction: SIGPIPE");
 }
+
+void checkSignals()
+{
+	if (g_stop_requested)
+		throw StopRequested();
+}

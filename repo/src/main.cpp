@@ -11,6 +11,7 @@ int main(int argc, char** argv)
 		while (g_stop_requested == 0)
 			server.run();
 	}
+	catch (StopRequested&) {}
 	catch (const std::exception& e)
 	{
 		std::cerr << e.what() << std::endl;

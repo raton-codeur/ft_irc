@@ -4,7 +4,7 @@ static bool has_white_spaces(const std::string& str)
 {
 	for (size_t i = 0; i < str.size(); ++i)
 	{
-		if (std::isspace(str[i]))
+		if (std::isspace(static_cast<unsigned char>(str[i])))
 			return true;
 	}
 	return false;
@@ -22,7 +22,7 @@ static void checkArgs(int argc, char** argv)
 		error_and_throw("Error: invalid password (must be 1-32 characters long, no whitespaces)");
 }
 
-Server::Server(int argc, char** argv) : _backlog(5), _cmdHandler(*this)
+Server::Server(int argc, char** argv) : _cmdHandler(*this)
 {
 	checkArgs(argc, argv);
 	_port = std::atoi(argv[1]);
@@ -48,7 +48,7 @@ Server::Server(int argc, char** argv) : _backlog(5), _cmdHandler(*this)
 	if (bind(_server_fd, (struct sockaddr*)&addr_server, sizeof(addr_server)) == -1)
 		perror_and_throw("bind");
 
-	if (listen(_server_fd, _backlog) == -1)
+	if (listen(_server_fd, BACKLOG) == -1)
 		perror_and_throw("listen");
 	std::cout << "server is listening on port " << _port << "..." << std::endl;
 
@@ -74,7 +74,7 @@ Server::~Server()
 		delete it->second;
 }
 
-Channel* Server::getChannel(const std::string& name) const
+Channel* Server::getChannel(const std::string& name)
 {
 	std::map<std::string, Channel*>::iterator it = _channels.find(name);
 	if (it != _channels.end())
@@ -104,9 +104,7 @@ void Server::run()
 			perror_and_throw("poll");
 	}
 	acceptClients();
-	if (g_stop_requested)
-		return;
-	handleClientsEvents();
+	handleClientEvents();
 }
 
 void Server::addClient(int client_fd)
@@ -131,8 +129,7 @@ void Server::acceptClients()
 		while (true)
 		{
 			client_fd = accept(_server_fd, NULL, NULL);
-			if (g_stop_requested)
-				return;
+			checkSignals();
 			if (client_fd != -1)
 			{
 				if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
@@ -171,18 +168,28 @@ void Server::handleClientErrors(size_t i)
 
 void Server::handleClientPOLLIN(size_t& i)
 {
+	size_t total_read = 0;
 	ssize_t n;
-	while (_poll_array[i].revents & POLLIN)
+	bool deletedClient = false;
+
+	while (true)
 	{
-		do
-			n = recv(_clients[i]->getFd(), _buffer_recv, sizeof(_buffer_recv), 0);
-		while (n == -1 && errno == EINTR);
-		if (g_stop_requested)
-			return;
+		n = recv(_clients[i]->getFd(), _buffer_recv, sizeof(_buffer_recv), 0);
 		if (n > 0)
 		{
 			_clients[i]->getIn().append(_buffer_recv, n);
-			_cmdHandler.handleCommand(_clients[i]);
+			total_read += n;
+			if (_clients[i]->getIn().size() > MAX_CLIENT_INPUT_BUFFER)
+			{
+				std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (input buffer overflow)" << std::endl;
+				deleteClient(i);
+				return;
+			}
+			_cmdHandler.handleCommand(_clients[i], deletedClient);
+			if (deletedClient)
+				return;
+			else if (total_read >= MAX_READ_PER_CYCLE)
+				break;
 		}
 		else if (n == 0)
 		{
@@ -190,18 +197,21 @@ void Server::handleClientPOLLIN(size_t& i)
 			deleteClient(i);
 			return;
 		}
+		else if (errno == EINTR)
+			checkSignals();
 		else if (errno == EAGAIN || errno == EWOULDBLOCK)
 			break;
 		else
 		{
 			std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (error)" << std::endl;
 			deleteClient(i);
+			return;
 		}
 	}
 	++i;
 }
 
-void Server::handleClientsEvents()
+void Server::handleClientEvents()
 {
 	for (size_t i = 1; i < _poll_array.size();)
 	{
@@ -209,8 +219,6 @@ void Server::handleClientsEvents()
 			handleClientErrors(i);
 		else if (_poll_array[i].revents & POLLIN)
 			handleClientPOLLIN(i);
-		else if (g_stop_requested)
-			return;
 		else
 			++i;
 	}

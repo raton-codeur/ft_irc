@@ -45,7 +45,7 @@ static std::string toUpper(std::string& s)
     return result;
 }
 
-void CommandHandler::handleCommand(Client* client)
+void CommandHandler::handleCommand(Client* client, bool& deletesClient)
 {
 	std::string line;
 	std::stringstream ss(client->getIn());
