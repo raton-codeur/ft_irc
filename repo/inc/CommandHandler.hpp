@@ -35,5 +35,5 @@ public:
 	CommandHandler(Server& server);
 	~CommandHandler();
 
-	void handleCommand(Client* client, bool& deletesClient);
+	int handleCommand(Client* client);
 };

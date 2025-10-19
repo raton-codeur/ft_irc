@@ -129,7 +129,6 @@ void Server::acceptClients()
 		while (true)
 		{
 			client_fd = accept(_server_fd, NULL, NULL);
-			checkSignals();
 			if (client_fd != -1)
 			{
 				if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
@@ -139,7 +138,7 @@ void Server::acceptClients()
 			else if (errno == EAGAIN || errno == EWOULDBLOCK)
 				break;
 			else if (errno == ECONNABORTED || errno == EINTR)
-				continue;
+				checkSignals();
 			else
 				perror_and_throw("accept");
 		}
@@ -170,7 +169,6 @@ void Server::handleClientPOLLIN(size_t& i)
 {
 	size_t total_read = 0;
 	ssize_t n;
-	bool deletedClient = false;
 
 	while (true)
 	{
@@ -185,8 +183,7 @@ void Server::handleClientPOLLIN(size_t& i)
 				deleteClient(i);
 				return;
 			}
-			_cmdHandler.handleCommand(_clients[i], deletedClient);
-			if (deletedClient)
+			if (_cmdHandler.handleCommand(_clients[i]))
 				return;
 			else if (total_read >= MAX_READ_PER_CYCLE)
 				break;

@@ -20,7 +20,7 @@ dans handleClientEvents, on boucle sur le tableau de poll pour checker les évè
 
 pour un client donné, si POLLIN est signalé par poll, alors on sait qu'il veut nous envoyer des données. on appelle handleClientPOLLIN.
 
-on a :
+pour handleClientPOLLIN, on a :
 - un buffer qui sert à recv, de taille BUFFER_RECV_SIZE.
 - un nombre limite d'octets qu'on peut recevoir à la fois par client (donc par appelle de handleClientPOLLIN), c'est MAX_READ_PER_CYCLE.
 - un nombre max d'octets par ligne de commande irc, c'est MAX_LINE_LENGTH.
@@ -29,7 +29,7 @@ on a :
 dans handleClientPOLLIN, on a une boucle "infinie" qui :
 - appelle recv, ce qui remplie le buffer de recv.
 - append le buffer de recv au buffer de réception du client.
-- appelle handleCommand pour examiner le buffer de réception du client. handleCommand va détecter s'il y a une / plusieurs lignes complètes dans le buffer, exécuter les commandes et les retirer du buffer du client. attention, handleCommand peut supprimer le client (par exemple si la ligne dépasse MAX_LINE_LENGTH ou si la commande c'est QUIT). on rajoute un paramètre à handleCommand, "deletesClient", pour savoir si la fonction deletes le client ou pas.
+- appelle handleCommand pour examiner le buffer de réception du client. handleCommand va détecter s'il y a une / plusieurs lignes complètes dans le buffer, exécuter les commandes et les retirer du buffer du client. attention, handleCommand peut supprimer le client (par exemple si la ligne dépasse MAX_LINE_LENGTH ou si la commande c'est QUIT). je propoes que si elle supprime un client, elle renvoie 1, sinon elle renvoie 0.
 
 - on sort quand on a plus rien à lire (ou qu'il y a eu une erreur).
 - si le client s'est déconnecté ou qu'on a fini de lire, c'est normal. sinon, c'est une autre erreur improbable et on peut supprimer le client.
@@ -42,18 +42,10 @@ après un recv > 0 :
 - si jamais un client arrive à faire saturer son buffer de réception (la taile dépasse MAX_CLIENT_INPUT_BUFFER) (en envoyant d'un coup plein de commandes par exemple), il faut le kick.
 
 
-https://chatgpt.com/c/68f3933f-dac4-832d-a5b7-79860fcbc781
-il faut revoir la façon dont on kick les clients après handleCommand avec un vecteur dans serveur ?
 
 
 
 
-
-
-
-
-buffers client
-https://chatgpt.com/c/68ee053c-86b4-8330-b733-3a1d64ab1f22
 
 
 quand on client veut envoyer un message à un autre client, il faut ajouter le pollout du client receveur en event de poll.

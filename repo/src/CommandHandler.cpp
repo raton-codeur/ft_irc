@@ -45,7 +45,7 @@ static std::string toUpper(std::string& s)
     return result;
 }
 
-void CommandHandler::handleCommand(Client* client, bool& deletesClient)
+int CommandHandler::handleCommand(Client* client)
 {
 	std::string line;
 	std::stringstream ss(client->getIn());
@@ -55,13 +55,14 @@ void CommandHandler::handleCommand(Client* client, bool& deletesClient)
 	for (size_t i = 0; i < args.size(); ++i)
 		std::cout << "arg[" << i << "] = " << args[i] << std::endl;
 	if (args.empty())
-		return;
+		return 0;
 	std::string cmd = toUpper(args[0]);
 	std::map<std::string, CommandFunction>::iterator it = _commands.find(cmd);
 	if (it != _commands.end())
 		(this->*(it->second))(*client, args);
 	else
 		std::cout << args[0] << " :Unknown command" << std::endl;
+	return 0;
 }
 
 void CommandHandler::pass(Client& client, const std::vector<std::string>& args)

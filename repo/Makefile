@@ -7,7 +7,7 @@ SRCS = $(addprefix src/, \
 	Channel.cpp \
 	CommandHandler.cpp \
 	utils.cpp \
-	signal.cpp \
+	signals.cpp \
 )
 OBJS = $(patsubst src/%.cpp, tmp/%.o, $(SRCS))
 
