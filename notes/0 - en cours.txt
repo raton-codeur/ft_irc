@@ -1,5 +1,37 @@
 -
+### fusion
 
+
+pas de processClientBuffer dans le serveur. c'est le command handler qui prend la main pour traiter le buffer
+
+hostname init en dur dans le constructeur donc type const string possible
+
+getPassword
+type de retour : const string&
+comme ça, les autres classes ne peuvent plus le modifier, juste le lire.
+
+on expose juste getOrCreateChannel aux autres classes et on met getChannel en private
+
+addClientToNickMap
+pas besoin du nick en paramètre puisqu'il est stocké dans le client
+
+removeClientFromNickMap -> deleteClient
+si on supprime un nickname c'est forcément qu'on delete le client.
+on a juste à essayer de supprimer le nickname de la map avant de delete le client.
+
+deleteClient passe en public pour la commande quit.
+ça peut être bien d'envoyer l'indice du client à handleCommand, comme ça il peut appeler deleteClient sans avoir à le chercher dans le vecteur.
+
+(nullptr ça existe pas en c++98, il faut mettre NULL)
+
+type de retour de getHostname : const string&
+évite une copie inutile
+
+notifyClients ? sendNamesList ?
+
+pas de toDisconnect dans le client ?
+
+getServer dans le client ? sendMessage ? get Channel ?
 
 
 

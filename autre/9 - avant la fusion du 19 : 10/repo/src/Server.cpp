@@ -22,7 +22,7 @@ static void checkArgs(int argc, char** argv)
 		error_and_throw("Error: invalid password (must be 1-32 characters long, no whitespaces)");
 }
 
-Server::Server(int argc, char** argv) : _hostname("irc.qhauuy-jteste.local"), _cmdHandler(*this)
+Server::Server(int argc, char** argv) : _cmdHandler(*this)
 {
 	checkArgs(argc, argv);
 	_port = std::atoi(argv[1]);
@@ -74,6 +74,26 @@ Server::~Server()
 		delete it->second;
 }
 
+Channel* Server::getChannel(const std::string& name)
+{
+	std::map<std::string, Channel*>::iterator it = _channels.find(name);
+	if (it != _channels.end())
+		return it->second;
+	return NULL;
+}
+
+Channel* Server::getOrCreateChannel(const std::string& name)
+{
+	Channel* channel = getChannel(name);
+	if (!channel)
+	{
+		channel = new Channel(name);
+		_channels[name] = channel;
+		std::cout << "channel " << name << ": created" << std::endl;
+	}
+	return channel;
+}
+
 void Server::run()
 {
 	if (poll(&_poll_array[0], _poll_array.size(), -1) == -1)
@@ -109,7 +129,7 @@ void Server::acceptClients()
 		while (true)
 		{
 			client_fd = accept(_server_fd, NULL, NULL);
-			if (client_fd == -1)
+			if (client_fd != -1)
 			{
 				if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
 					perror_and_throw("fcntl (client)");
@@ -127,7 +147,6 @@ void Server::acceptClients()
 
 void Server::deleteClient(size_t i)
 {
-	_clients_by_nick.erase(_clients[i]->getNickname());
 	delete _clients[i];
 	_clients[i] = _clients.back();
 	_clients.pop_back();
@@ -164,7 +183,7 @@ void Server::handleClientPOLLIN(size_t& i)
 				deleteClient(i);
 				return;
 			}
-			if (_cmdHandler.handleCommand(_clients[i], i))
+			if (_cmdHandler.handleCommand(_clients[i]))
 				return;
 			else if (total_read >= MAX_READ_PER_CYCLE)
 				break;
@@ -200,105 +219,4 @@ void Server::handleClientEvents()
 		else
 			++i;
 	}
-}
-
-const std::string& Server::getHostname() const
-{
-	return _hostname;
-}
-
-const std::string& Server::getPassword() const
-{
-	return _password;
-}
-
-Client* Server::getClientByNick(const std::string& nick)
-{
-	std::map<std::string, Client*>::iterator it = _clients_by_nick.find(nick);
-	if (it != _clients_by_nick.end())
-		return it->second;
-	return NULL;
-}
-
-Channel* Server::getChannel(const std::string& name)
-{
-	std::map<std::string, Channel*>::iterator it = _channels.find(name);
-	if (it != _channels.end())
-		return it->second;
-	return NULL;
-}
-
-Channel* Server::getOrCreateChannel(const std::string& name)
-{
-	Channel* channel = getChannel(name);
-	if (!channel)
-	{
-		channel = new Channel(name);
-		_channels[name] = channel;
-		std::cout << "channel " << name << ": created" << std::endl;
-	}
-	return channel;
-}
-
-void Server::addClientToNickMap(Client* client)
-{
-	_clients_by_nick[client->getNickname()] = client;
-}
-
-
-
-
-
-
-
-
-
-
-void Server::notifyClients(const std::set<std::string>& channels, const std::string& message, Client* exclude = NULL)
-{
-	for (std::set<std::string>::const_iterator it = channels.begin(); it != channels.end(); ++it)
-	{
-		Channel *chan = getChannel(*it);
-		if (!chan) continue;
-
-		const std::set<Client*> &members = chan->getClients();
-		for (std::set<Client*>::const_iterator mit = members.begin(); mit != members.end(); ++mit)
-		{
-			if (*mit != exclude)
-				(*mit)->sendMessage(message);
-		}
-	}
-}
-
-void Server::notifyClients(Channel* channel, const std::string& message, Client* exclude)
-{
-	if (!channel)
-		return;
-
-	const std::set<Client*>& members = channel->getClients();
-	for (std::set<Client*>::const_iterator it = members.begin(); it != members.end(); ++it)
-	{
-		if (*it != exclude)
-			(*it)->sendMessage(message);
-	}
-}
-
-void Server::sendNamesList(Client& client, Channel* channel)
-{
-		if (!channel)
-		return;
-
-	std::string names;
-	const std::set<Client*>& members = channel->getClients();
-
-	for (std::set<Client*>::const_iterator it = members.begin(); it != members.end(); ++it)
-	{
-		if (!names.empty())
-			names += " ";
-		if (channel->isOperator(*it))
-			names += "@";
-		names += (*it)->getNickname();
-	}
-	client.sendMessage(":" + _hostname + " 353 " + client.getNickname() + " = " + channel->getName() + " :" + names);
-	client.sendMessage(":" + _hostname + " 366 " + client.getNickname() + " " +channel->getName() + " :End of /NAMES list");
 }

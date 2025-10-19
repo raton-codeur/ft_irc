@@ -14,7 +14,6 @@ private:
 	Server& _server;
 	std::map<std::string, CommandFunction> _commands;
 
-	void cap(Client& client, const std::vector<std::string>& args);
 	void pass(Client& client, const std::vector<std::string>& args);
 	void nick(Client& client, const std::vector<std::string>& args);
 	void user(Client& client, const std::vector<std::string>& args);
@@ -36,8 +35,5 @@ public:
 	CommandHandler(Server& server);
 	~CommandHandler();
 
-	int handleCommand(Client* client, size_t i);
-	void processClientBuffer(Client *client, CommandHandler &cmdHandler);
-
-	bool checkRegistered(Client& client);
+	int handleCommand(Client* client);
 };

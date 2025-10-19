@@ -11,31 +11,6 @@ const std::string& Channel::getName() const
 	return _name;
 }
 
-void Channel::setName(const std::string &name)
-{
-	_name = name;
-}
-
-const std::string &Channel::getKey() const
-{
-	return _key;
-}
-
-void Channel::setKey(const std::string &key)
-{
-	_key = key;
-}
-
-const size_t &Channel::getLimit() const
-{
-	return _limit;
-}
-
-void Channel::setLimit(const size_t &limit)
-{
-	_limit = limit;
-}
-
 void Channel::setMode(int flag)
 {
 	_mode |= flag;
@@ -101,14 +76,9 @@ bool Channel::isInvited(Client *client) const
 	return (_invited.find(client) != _invited.end());
 }
 
-
 void Channel::removeInvite(Client *client)
 {
 	_invited.erase(client);
 }
 
-const std::set<Client *> &Channel::getClients() const
-{
-	return _members;
-}
 
