@@ -15,6 +15,7 @@ CommandHandler::CommandHandler(Server& server) : _server(server)
 	_commands["PART"] = &CommandHandler::part;
 	_commands["TOPIC"] = &CommandHandler::topic;
 	_commands["PING"] = &CommandHandler::ping;
+	_commands["MODE"] = &CommandHandler::mode;
 }
 
 CommandHandler::~CommandHandler()
@@ -323,6 +324,67 @@ void CommandHandler::ping(Client &client, const std::vector<std::string> &args)
 	client.sendMessage("PONG :" + args[1]);
 }
 
+static void partSingleChannel(Client &client, const std::string &channel_name, Server &server)
+{
+	Channel* channel = server.getChannel(channel_name);
+	if (!channel)
+	{
+		client.sendMessage(":" + server.getHostname() + " 403 " + channel_name + " :No such channel");
+		return;
+	}
+
+	if (!channel->isMember(&client))
+	{
+		client.sendMessage(":" + server.getHostname() + " 442 " + channel_name + " :You're not on that channel");
+		return;
+	}
+
+	channel->removeMember(&client);
+	if (channel->isOperator(&client))
+		channel->removeOperator(&client);
+	client.removeFromChannel(channel_name);
+
+	std::string part_msg = ":" + client.getPrefix() + " PART :" + channel_name;
+	server.notifyClients(channel, part_msg, &client);
+	if (!channel->getClients().empty() && channel->getOperators().empty())
+	{
+		Client *new_op = *(channel->getClients().begin());	
+		channel->addOperator(new_op);
+		std::string op_msg = ":" + new_op->getPrefix() + " MODE " + channel->getName() + " +o " + new_op->getNickname();
+    	server.notifyClients(channel, op_msg, nullptr);
+	}
+	if (channel->getClients().empty())
+		server.deleteChannel(channel_name);
+}
+
+void CommandHandler::part(Client& client, const std::vector<std::string>& args)
+{
+	if (!checkRegistered(client))
+	return;
+	std::cout << "PART command received" << std::endl;
+	if (args.size() < 2)
+	{
+		client.sendMessage(":" + _server.getHostname() + " 461 PART :Not enough parameters");
+		return;
+	}
+	std::vector<std::string> channels = splitByChar(args[1], ',');
+	for (size_t i = 0; i < channels.size(); ++i)
+		partSingleChannel(client, channels[i], _server);
+}
+
+void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
+{
+	// if (!checkRegistered(client))
+	// 	return;
+	// if (args.size() < 2)
+	// {
+	// 	client.sendMessage(":" + _server.getHostname() + " 461 MODE :Not enough parameters");
+	// 	return;
+	// }
+	( void )client;
+	( void )args;
+	std::cout << "MODE command received" << std::endl;
+}
 
 void CommandHandler::privmsg(Client& client, const std::vector<std::string>& args)
 {
@@ -345,12 +407,6 @@ void CommandHandler::kick(Client& client, const std::vector<std::string>& args)
 	std::cout << "KICK command received" << std::endl;
 }
 
-void CommandHandler::part(Client& client, const std::vector<std::string>& args)
-{
-	(void)client;
-	(void)args;
-	std::cout << "PART command received" << std::endl;
-}
 
 void CommandHandler::topic(Client& client, const std::vector<std::string>& args)
 {

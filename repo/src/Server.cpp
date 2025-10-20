@@ -217,6 +217,17 @@ Channel* Server::getOrCreateChannel(const std::string& name)
 	return channel;
 }
 
+void Server::deleteChannel(const std::string &name)
+{
+	std::map<std::string, Channel*>::iterator it = _channels.find(name);
+	if (it != _channels.end())
+	{
+		delete it->second;
+		_channels.erase(it);
+		std::cout << "channel " << name << ": deleted (empty)" << std::endl;
+	}
+}
+
 Client *Server::getClientByNick(const std::string &nick)
 {
 	std::map<std::string, Client*>::iterator it = _clients_by_nick.find(nick);

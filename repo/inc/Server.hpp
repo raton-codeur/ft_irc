@@ -35,6 +35,7 @@ private:
 	~Server();
 	Channel* getChannel(const std::string& name);
 	Channel* getOrCreateChannel(const std::string& name);
+	void deleteChannel(const std::string& name);
 	Client* getClientByNick(const std::string& nick);
 	void addClientToNickMap(const std::string &nick, Client *client);
 	void removeClientFromNickMap(const std::string &nick);
