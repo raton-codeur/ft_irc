@@ -55,7 +55,6 @@ public:
 	void addOperator(Client* client);
 	void removeOperator(Client* client);
 	bool isOperator(Client* client) const;
-	std::set<Client*> getOperators() const;
 
 	void invite(Client* client);
 	void removeInvite(Client* client);

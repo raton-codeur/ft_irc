@@ -58,10 +58,8 @@ public:
 	Channel* getOrCreateChannel(const std::string& name);
 	void addClientToNickMap(Client* client);
 	void deleteClient(size_t i);
-	void deleteChannel(const std::string& name);
-	void removeClientFromNickMap(const std::string& nick);
 
-	// others
+	// other
 	void notifyClients(const std::set<std::string>& channels, const std::string& message, Client* exclude);
 	void notifyClients(Channel* channel, const std::string& message, Client* exclude);
 	void sendNamesList(Client& client, Channel* channel);

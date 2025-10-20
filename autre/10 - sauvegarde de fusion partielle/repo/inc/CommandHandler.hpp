@@ -24,8 +24,6 @@ private:
 	void kick(Client& client, const std::vector<std::string>& args);
 	void part(Client& client, const std::vector<std::string>& args);
 	void topic(Client& client, const std::vector<std::string>& args);
-	void ping(Client& client, const std::vector<std::string>& args);
-	void mode(Client& client, const std::vector<std::string>& args);
 
 	std::vector<std::string> _split(const std::string& input);
 

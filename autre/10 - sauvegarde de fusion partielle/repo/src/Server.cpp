@@ -245,23 +245,14 @@ void Server::addClientToNickMap(Client* client)
 	_clients_by_nick[client->getNickname()] = client;
 }
 
-void Server::deleteChannel(const std::string& name)
-{
-	std::map<std::string, Channel*>::iterator it = _channels.find(name);
-	if (it != _channels.end())
-	{
-		delete it->second;
-		_channels.erase(it);
-		std::cout << "channel " << name << ": deleted (empty)" << std::endl;
-	}
-}
 
-void Server::removeClientFromNickMap(const std::string& nick)
-{
-	std::map<std::string, Client*>::iterator it = _clients_by_nick.find(nick);
-	if (it != _clients_by_nick.end())
-		_clients_by_nick.erase(it);
-}
+
+
+
+
+
+
+
 
 void Server::notifyClients(const std::set<std::string>& channels, const std::string& message, Client* exclude = NULL)
 {
@@ -294,7 +285,7 @@ void Server::notifyClients(Channel* channel, const std::string& message, Client*
 
 void Server::sendNamesList(Client& client, Channel* channel)
 {
-	if (!channel)
+		if (!channel)
 		return;
 
 	std::string names;
