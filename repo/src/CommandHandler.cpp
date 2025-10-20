@@ -14,6 +14,7 @@ CommandHandler::CommandHandler(Server& server) : _server(server)
 	_commands["KICK"] = &CommandHandler::kick;
 	_commands["PART"] = &CommandHandler::part;
 	_commands["TOPIC"] = &CommandHandler::topic;
+	_commands["PING"] = &CommandHandler::ping;
 }
 
 CommandHandler::~CommandHandler()
@@ -113,11 +114,15 @@ void CommandHandler::cap(Client &client, const std::vector<std::string> &args)
 	std::string subcommand = args[1];
 	subcommand = toUpper(subcommand);
 	if (subcommand == "LS")
-		client.sendMessage(":" + _server.getHostname() + " CAP " + client.getNickname() + " LS :multi-prefix");
+		client.sendMessage(":" + _server.getHostname() + " CAP * LS :multi-prefix");
 	else if (subcommand == "REQ")
 	{
 		std::string requested = (args.size() >= 3 ? args[2] : "");
-		client.sendMessage(":" + _server.getHostname() + " CAP " + client.getNickname() + " NAK :" + requested);
+		std::string nick = client.getNickname().empty() ? "*" : client.getNickname();
+		if (requested.find("multi-prefix") != std::string::npos)
+			client.sendMessage(":" + _server.getHostname() + " CAP " + nick + " ACK :" + requested);
+		else
+			client.sendMessage(":" + _server.getHostname() + " CAP " + nick + " NAK :" + requested);
 	}
 	else if (subcommand == "END")
 		client.sendWelcome(_server.getHostname());
@@ -307,6 +312,17 @@ void CommandHandler::join(Client& client, const std::vector<std::string>& args)
 		joinSingleChannel(client, channels[i], key, _server);
 	}
 }
+
+void CommandHandler::ping(Client &client, const std::vector<std::string> &args)
+{
+	if (args.size() < 2)
+	{
+		client.sendMessage(":" + _server.getHostname() + " 409 " + client.getNickname() + " :No origin specified");
+		return;
+	}
+	client.sendMessage("PONG :" + args[1]);
+}
+
 
 void CommandHandler::privmsg(Client& client, const std::vector<std::string>& args)
 {
