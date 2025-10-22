@@ -1,0 +1,135 @@
+
+
+
+
+
+
+
+
+
+quand on client veut envoyer un message à un autre client, il faut ajouter le pollout du client receveur en event de poll.
+
+
+
+
+dans client on aura sûrement les attributs nickname, username, hostname.
+on verra plus tard mais on aura surement besoin d'un tampon de lecture pour les messages hachés (string ça suffit) et un tampon d'envoie de type std::deque<std::string>
+
+
+
+
+
+-
+extension de nom de fichier
+
+.tpp ≈ .ipp, .inl, .impl
+
+"i" → "implementation"
+"in" → "inline" implementation-
+-
+
+-
+IRC
+
+"Internet Relay Chat"
+
+c'est un protocole de communication sur Internet
+
+
+serveur et client communiquent via des commandes IRC
+
+
+irssi
+c'est un client IRC en ligne de commande
+
+se connecter à un serveur :
+
+/connect <server_ip> <port>
+
+
+
+un client qui se connecte au serveur est d'abord dans l'état REGISTERING. il doit envoyer les commandes "NICK" et "USER" (dans n'importe quel ordre) pour passer REGISTERED. toute autre commande doit être répondue avec l'erreur 451 par le serveur :
+
+:server 451 <nickname> :You have not registered
+
+si on ne connait pas encore le nickname on peut mettre "*"
+
+
+NICK <nickname>
+
+ça définit le pseudo du client. à vérifier par le serveur :
+	● 1 à 9 caractères
+	● doit commencer par une lettre
+	● peut contenir uniquement : lettres, chiffres, "-", "[", "]", "\", "^", "{", "}", "_", "|"
+	● pas déjà utilisé par un autre client
+
+si le pseudo est déjà pris, le serveur doit renvoyer l'erreur :
+:server 433 * <nickname> :Nickname is already in use
+
+si le pseudo est invalide, le serveur doit renvoyer l'erreur :
+:server 432 * <nickname> :Erroneous nickname
+
+
+voir :
+https://chatgpt.com/c/68b85f49-613c-8324-ba22-a8be96ee5ac0
+https://chatgpt.com/c/68b865d3-d200-832f-b384-4acd870a4494
+https://chatgpt.com/c/68b868de-cd74-832a-8188-8c0af48d85ef
+
+
+USER <username> <hostname> <servername> :<realname>
+
+ça identifie l'utilisateur.
+
+vérifier qu'il y ait 4 arguments sinon erreur
+
+<username>
+pas besoin d'être unique, ça peut être la variable d'environnement USER par exemple
+
+	● <hostname>, historiquement, c'est le nom de la machine cliente mais on peut l'écraser côté serveur par l’[IP = hostname] du client. exemple : localhost
+	● <servername>, historiquement, c'est le nom du serveur mais normalement on pourra hardcoder le nom qu'on veut
+exemple : irc.local
+
+<realname> c'est un texte libre
+
+
+une fois qu'un client est REGISTERED il faut lui envoyer la séquence de bienvenue :
+001 RPL_WELCOME
+002 RPL_YOURHOST
+003 RPL_CREATED
+004 RPL_MYINFO
+puis 375/372/376 (MOTD) ou 422 ERR_NOMOTD
+
+
+
+
+
+
+-
+JOIN #canal
+
+PART #canal
+quitter le canal
+
+PRIVMSG <cible> : message
+
+NOTICE <cible> : message
+comme PRIVMSG mais utilisé pour des infos système
+
+PING <token> / PONG <token>
+garder la connexion en vie
+
+QUIT :message
+se déconnecter
+-
+
+
+
+
+-
+voir code du serveur : 353
+liste des utilisateurs d'un canal
+-
+
+
+
+
