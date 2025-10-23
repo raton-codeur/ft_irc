@@ -1,2 +1,104 @@
 -
+architecture des classes
 
+CommandHandler
+une instance publique, initialisée avec le serveur (et stockée dans le serveur)
+
+quand on crée un client, on lui passe une ref privée au serveur (et donc au command handler)
+
+le cmdHandler s'applique sur un client donc il a aussi indirectement la ref au serveur
+
+
+
+une boucle run du Serveur :
+- acceptClients : accepter des clients
+- handleClientEvents : gérer les buffers du clients, c'est-à-dire, reçevoir et envoyer. on lance peut-être des commandes et on note peut petre des clients à supprimer. on ne supprime pas directement de clients ici.
+- removeClients : supprimer des clients (si on a plus rien à leur envoyer)
+
+
+"soft disconnect" et "hard disconnect" d'un client
+marqueurs / attributs (dans un client)
+- attribut _toDisconnect
+	- on le lit avec client.isToDisconnect
+	- on le passe à vrai avec client.markToDisconnect
+- attribut _hardDisconnect
+	- on le lit avec client.isHardDisconnect
+	- on le passe à vrai avec client.markHardDisconnect
+
+
+
+
+handleClientEvents
+- si le client est en hard disconnect, il ne faut rien faire de ses buffers, il faut juste le supprimer et notifier les autres clients
+- si le client a trigger une erreur avec poll, on le marque en hard disconnect et on passe au suivant
+- si le client a trigger un POLLIN mais qu'on le marque hard disconnect dans handlePOLLIN, on doit pas handle POLLOUT
+- un client peut trigger POLLIN et / ou POLLOUT à la fois
+- si le client a trigger POLLIN et qu'il se déconnecte (par exemple avec la commande quit), il sera marqué isToDisconnect. il faut arrêter de lire / surveiller son POLLIN mais il faut quand même finir de lui envoyer son outbox (normalement, elle contient un dernier message).
+
+
+
+
+handlePOLLIN
+- si le client s'est déconnecté, on le marque pour hard disconnect et on passe au suivant
+- si on a eu SIGINT, on revient au main
+- si on a eu un autre signal, on refait recv
+- si c'est un faux POLLIN, on passe au suivant
+- si on a eu une autre erreur de recv, on marque le client hard disconnect et on passe au suivant
+- si on a bien reçu des données :
+	- si on dépasse le max du buffer d'inbox, on passe le client en soft disconnect et on sort
+	- si une ligne / plusieurs lignes sont détectées par cmdHandler, elle sont exécutées
+		- si le client a fait quit, il passe en soft disconnect et on sort
+	- si on a lu le max qu'on autorise par client, on passe au suivant, sinon on continue
+
+
+oubox d'un client
+
+c'est une deque de string pour pouvoir faire des outbox.push_back, send(outbox.front());, outbox.pop_front();
+
+
+pour envoyer du texte à un client, on utilise client.send(message). ça ajoute à l'outbox du client.
+
+
+
+
+
+-
+à faire
+
+revoir delete client dans le serveur pour supprimer le client des channels, notifier les autres clients
+
+méthode client.disconnect ?
+on a server.delete(index d'un client)
+
+paramètre pour markToDisconnect : une chaine "why" pour pouvoir faire :
+_outbox.push_back("ERROR :Closing Link: " + _nick + " (" + why + ")\r\n");
+
+paramètre pour markHardDisconnect : une chaine "why" pour faire :
+std::cerr << "[ERROR] Client " << _nick << " disconnected: " << why << std::endl;
+
+il faut disable POLLIN lors d'un hard disconnect
+ça simplifie cette ligne dans handleClientEvents : if (_poll_array[i].revents & POLLIN && !_clients[i]->isToDisconnect())
+
+
+
+
+
+
+
+
+
+cmdHandler
+
+checkInbox
+
+quand on reçoit des données dans le buffer d'un client, il faut parser le buffer.
+on ajoute "handle buffer" à la classe "handle command".
+
+on appelle "handle buffer" pour voir si :
+- on a pas dépassé le "max client input buffer"
+- on a des lignes à traiter (il y a \n ou \r\n)
+- chaque ligne ne dépasse pas "max line length"
+
+handle buffer renvoie 0 sauf si on a marqué le client pour suppression (et donc qu'on arrête de lire son inbox)
+
+si il y a une ligne à traiter, il faut la split en arguments et appeler la bonne fonction avec les arguments

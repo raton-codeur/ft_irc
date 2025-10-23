@@ -1,8 +1,7 @@
 #include "CommandHandler.hpp"
-#include "main.hpp"
-#include "Server.hpp"
+#include "Client.hpp"
 
-CommandHandler::CommandHandler(Server& server) : _server(server)
+CommandHandler::CommandHandler()
 {
 	_commands["CAP"] = &CommandHandler::cap;
 	_commands["PASS"] = &CommandHandler::pass;
@@ -20,6 +19,25 @@ CommandHandler::CommandHandler(Server& server) : _server(server)
 
 CommandHandler::~CommandHandler()
 {}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 std::vector<std::string> CommandHandler::_split(const std::string& input)
 {
@@ -58,7 +76,7 @@ void CommandHandler::processClientBuffer(Client *client , CommandHandler &cmdHan
 	{
 		pos = in.find("\r\n");
 		if (pos == std::string::npos)
-			pos = in.find('\n'); 
+			pos = in.find('\n');
 
 		if (pos == std::string::npos)
 			break;
@@ -79,18 +97,18 @@ void CommandHandler::processClientBuffer(Client *client , CommandHandler &cmdHan
 	}
 }
 
-bool CommandHandler::checkRegistered(Client &client)
-{
-	if(!client.isRegistered())
-	{
-		client.sendMessage(":" + _server.getHostname() + " 451 " + client.getNickname() + " :You have not registered");
-		return false;
-	}
-	return true;
-}
 
-void CommandHandler::handleCommand(Client *client, std::string line)
+
+int CommandHandler::handleBuffer(Client& client)
 {
+	if (client.getIn().size() > MAX_CLIENT_INPUT_BUFFER)
+	{
+		std::cout << "client (fd " << client.getFd() << "): disconnected (input buffer overflow)" << std::endl;
+		client.markToDisconnect();
+		return -1;
+	}
+
+
 	std::vector<std::string> args = _split(line);
 
 	for (size_t i = 0; i < args.size(); ++i)
@@ -104,6 +122,49 @@ void CommandHandler::handleCommand(Client *client, std::string line)
 	else
 		std::cout << args[0] << " :Unknown command" << std::endl;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void CommandHandler::cap(Client &client, const std::vector<std::string> &args)
 {
@@ -348,7 +409,7 @@ static void partSingleChannel(Client &client, const std::string &channel_name, S
 	server.notifyClients(channel, part_msg, &client);
 	if (!channel->getClients().empty() && channel->getOperators().empty())
 	{
-		Client *new_op = *(channel->getClients().begin());	
+		Client *new_op = *(channel->getClients().begin());
 		channel->addOperator(new_op);
 		std::string op_msg = ":" + new_op->getPrefix() + " MODE " + channel->getName() + " +o " + new_op->getNickname();
     	server.notifyClients(channel, op_msg, nullptr);

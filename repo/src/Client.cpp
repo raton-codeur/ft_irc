@@ -1,19 +1,19 @@
 #include "Client.hpp"
 
-Client::Client(Server& server, int fd) : _server(server), _fd(fd), _hostname("localhost"), _registered(false), _password_ok(false), _to_disconnect(false), _welcome_sent(false)
+Client::Client(Server& server, int fd) : _server(server), _fd(fd), _outboxOffset(0), _hostname("localhost"), _registered(false), _passwordOk(false), _toDisconnect(false), _hardDisconnect(false), _welcomeSent(false)
 {
 	std::cout << "new client (fd " << fd << ")" << std::endl;
+}
+
+int Client::getFd() const
+{
+	return _fd;
 }
 
 Client::~Client()
 {
 	close(_fd);
 	std::cout << "client (fd " << _fd << "): freed" << std::endl;
-}
-
-int Client::getFd() const
-{
-	return _fd;
 }
 
 const std::string& Client::getNickname() const
@@ -82,22 +82,32 @@ bool Client::isInChannel(const std::string& name) const
 
 bool Client::isPasswordOk() const
 {
-	return _password_ok;
+	return _passwordOk;
 }
 
 void Client::setPasswordOk()
 {
-	_password_ok = true;
+	_passwordOk = true;
 }
 
-bool Client::toDisconnect() const
+bool Client::isToDisconnect() const
 {
-	return _to_disconnect;
+	return _toDisconnect;
+}
+
+bool Client::isHardDisconnect() const
+{
+	return _hardDisconnect;
 }
 
 void Client::markToDisconnect()
 {
-	_to_disconnect = true;
+	_toDisconnect = true;
+}
+
+void Client::markHardDisconnect()
+{
+	_hardDisconnect = true;
 }
 
 std::string Client::getPrefix() const
@@ -105,9 +115,9 @@ std::string Client::getPrefix() const
 	return ":" + _nickname + "!" + _username + "@" + _hostname;
 }
 
-std::string& Client::getIn()
+void Client::send(const std::string& message)
 {
-	return _in;
+	_outbox.push_back(message);
 }
 
 Server &Client::getServer()
@@ -130,24 +140,105 @@ void Client::sendWelcome(const std::string& hostname)
 	if (isReadyforWelcome() && !hasWelcomeBeenSent())
 	{
 		setRegistered();
-		sendMessage(":" + hostname + " 001 " + getNickname() + " :Welcome to the IRC network " + hostname);
+		send(":" + hostname + " 001 " + getNickname() + " :Welcome to the IRC network " + hostname);
 		markWelcomeSent();
 	}
 }
 
-void Client::sendMessage(const std::string& message) const
-{
-	std::string msg = message + "\r\n";
-	if (send(_fd, msg.c_str(), msg.size(), 0) == -1)
-		std::cerr << "Failed to send message to client fd " << _fd << std::endl;
-}
-
 bool Client::hasWelcomeBeenSent() const
 {
-	return _welcome_sent;
+	return _welcomeSent;
 }
 
 void Client::markWelcomeSent()
 {
-	_welcome_sent = true;
+	_welcomeSent = true;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void Client::handlePOLLIN(CommandHandler& cmdHandler)
+{
+	size_t total_read = 0;
+	ssize_t n;
+
+	while (true)
+	{
+		n = recv(_fd, _bufferRecv, _BUFFER_RECV_SIZE, 0);
+		if (n > 0)
+		{
+			_inbox.append(_bufferRecv, n);
+			total_read += n;
+			if (_inbox.size() > _MAX_CLIENT_INPUT_BUFFER)
+			{
+				std::cout << "client (fd " << _fd << "): disconnected (input buffer overflow)" << std::endl;
+				markToDisconnect();
+				break;
+			}
+			if (cmdHandler.checkInbox(*this))
+				break;
+			if (total_read >= _MAX_READ_PER_CYCLE)
+				break;
+		}
+		else if (n == 0)
+		{
+			std::cout << "client (fd " << _fd << "): disconnected" << std::endl;
+			markHardDisconnect();
+			break;
+		}
+		else if (errno == EINTR)
+			checkSignals();
+		else if (errno == EAGAIN || errno == EWOULDBLOCK)
+			break;
+		else
+		{
+			std::cout << "client (fd " << _fd << "): disconnected (error)" << std::endl;
+			markHardDisconnect();
+			break;
+		}
+	}
+}
+
+void Client::handlePOLLOUT()
+{
+	const char* s;
+	size_t len;
+	ssize_t n;
+
+	while (!client.outbox.empty())
+	{
+		s = client.outbox.front().c_str() + client.outboxOffset;
+		len = client.outbox.front().size() - client.outboxOffset;
+		n = send(client.fd, s, len, 0);
+		if (n > 0)
+		{
+			client.outboxOffset += n;
+			if (client.outboxOffset == client.outbox.front().size())
+		}
+		if (client.outboxOffset == client.outbox.front().size())
+			client.outbox.pop_front();
+	}
+
+
 }

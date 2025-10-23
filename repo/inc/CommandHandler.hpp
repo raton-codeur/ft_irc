@@ -1,19 +1,22 @@
 #pragma once
-#include "Client.hpp"
-#include "Channel.hpp"
 #include "main.hpp"
 
-class Server;
+class Client;
 
 class CommandHandler
 {
 private:
 
+	// constants
+	static const size_t _MAX_LINE_LENGTH = 512;
+
+	// types
 	typedef void (CommandHandler::*CommandFunction)(Client&, const std::vector<std::string>&);
 
-	Server& _server;
+	// attributes
 	std::map<std::string, CommandFunction> _commands;
 
+	// commands
 	void cap(Client& client, const std::vector<std::string>& args);
 	void pass(Client& client, const std::vector<std::string>& args);
 	void nick(Client& client, const std::vector<std::string>& args);
@@ -27,19 +30,20 @@ private:
 	void ping(Client& client, const std::vector<std::string>& args);
 	void mode(Client& client, const std::vector<std::string>& args);
 
+	// utils
 	std::vector<std::string> _split(const std::string& input);
 
+	// disabled
 	CommandHandler();
 	CommandHandler(const CommandHandler&);
 	CommandHandler& operator=(const CommandHandler&);
 
 public:
 
-	CommandHandler(Server& server);
+	// constructors, destructor
+	CommandHandler();
 	~CommandHandler();
 
-	int handleCommand(Client* client, size_t i);
-	void processClientBuffer(Client *client, CommandHandler &cmdHandler);
-
-	bool checkRegistered(Client& client);
+	// main method
+	int checkInbox(Client& client);
 };

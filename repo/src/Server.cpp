@@ -1,4 +1,5 @@
 #include "Server.hpp"
+#include "Client.hpp"
 
 static bool has_white_spaces(const std::string& str)
 {
@@ -13,16 +14,16 @@ static bool has_white_spaces(const std::string& str)
 static void checkArgs(int argc, char** argv)
 {
 	if (argc != 3)
-		error_and_throw("Usage: ./ircserv <port> <password>");
+		errorAndThrow("Usage: ./ircserv <port> <password>");
 	char* end;
 	long port = std::strtol(argv[1], &end, 10);
 	if (*end != '\0' || port < 1024 || port > 65535)
-		error_and_throw("Error: invalid port number (must be an integer between 1024 and 65535)");
+		errorAndThrow("Error: invalid port number (must be an integer between 1024 and 65535)");
 	if (std::strlen(argv[2]) == 0 || std::strlen(argv[2]) > 32 || has_white_spaces(argv[2]))
-		error_and_throw("Error: invalid password (must be 1-32 characters long, no whitespaces)");
+		errorAndThrow("Error: invalid password (must be 1-32 characters long, no whitespaces)");
 }
 
-Server::Server(int argc, char** argv) : _hostname("irc.qhauuy-jteste.local"), _cmdHandler(*this)
+Server::Server(int argc, char** argv) : _cmdHandler(*this), _hostname("irc.qhauuy-jteste.local")
 {
 	checkArgs(argc, argv);
 	_port = std::atoi(argv[1]);
@@ -30,14 +31,14 @@ Server::Server(int argc, char** argv) : _hostname("irc.qhauuy-jteste.local"), _c
 
 	_server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (_server_fd == -1)
-		perror_and_throw("socket");
+		perrorAndThrow("socket");
 
 	if (fcntl(_server_fd, F_SETFL, O_NONBLOCK) == -1)
-		perror_and_throw("fcntl (server)");
+		perrorAndThrow("fcntl (server)");
 
 	int opt = 1;
 	if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1)
-		perror_and_throw("setsockopt");
+		perrorAndThrow("setsockopt");
 
 	struct sockaddr_in addr_server;
 	std::memset(&addr_server, 0, sizeof(addr_server));
@@ -46,17 +47,17 @@ Server::Server(int argc, char** argv) : _hostname("irc.qhauuy-jteste.local"), _c
 	addr_server.sin_port = htons(_port);
 
 	if (bind(_server_fd, (struct sockaddr*)&addr_server, sizeof(addr_server)) == -1)
-		perror_and_throw("bind");
+		perrorAndThrow("bind");
 
-	if (listen(_server_fd, BACKLOG) == -1)
-		perror_and_throw("listen");
+	if (listen(_server_fd, _BACKLOG) == -1)
+		perrorAndThrow("listen");
 	std::cout << "server is listening on port " << _port << "..." << std::endl;
 
 	struct pollfd p;
 	p.fd = _server_fd;
 	p.events = POLLIN;
 	p.revents = 0;
-	_poll_array.push_back(p);
+	_pollArray.push_back(p);
 
 	_clients.push_back(nullptr);
 }
@@ -76,15 +77,16 @@ Server::~Server()
 
 void Server::run()
 {
-	if (poll(&_poll_array[0], _poll_array.size(), -1) == -1)
+	if (poll(&_pollArray[0], _pollArray.size(), -1) == -1)
 	{
 		if (errno == EINTR)
 			return;
 		else
-			perror_and_throw("poll");
+			perrorAndThrow("poll");
 	}
 	acceptClients();
 	handleClientEvents();
+	removeClients();
 }
 
 void Server::addClient(int client_fd)
@@ -95,16 +97,16 @@ void Server::addClient(int client_fd)
 	p.fd = client_fd;
 	p.events = POLLIN;
 	p.revents = 0;
-	_poll_array.push_back(p);
+	_pollArray.push_back(p);
 }
 
 void Server::acceptClients()
 {
 	int client_fd;
 
-	if (_poll_array[0].revents & (POLLHUP | POLLERR | POLLNVAL))
-		error_and_throw("server socket error");
-	if (_poll_array[0].revents & POLLIN)
+	if (_pollArray[0].revents & (POLLHUP | POLLERR | POLLNVAL))
+		errorAndThrow("server socket error");
+	if (_pollArray[0].revents & POLLIN)
 	{
 		while (true)
 		{
@@ -112,7 +114,7 @@ void Server::acceptClients()
 			if (client_fd == -1)
 			{
 				if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
-					perror_and_throw("fcntl (client)");
+					perrorAndThrow("fcntl (client)");
 				addClient(client_fd);
 			}
 			else if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -120,87 +122,73 @@ void Server::acceptClients()
 			else if (errno == ECONNABORTED || errno == EINTR)
 				checkSignals();
 			else
-				perror_and_throw("accept");
+				perrorAndThrow("accept");
 		}
 	}
 }
 
 void Server::deleteClient(size_t i)
 {
-	_clients_by_nick.erase(_clients[i]->getNickname());
+	_clientsByNick.erase(_clients[i]->getNickname());
 	delete _clients[i];
 	_clients[i] = _clients.back();
 	_clients.pop_back();
-	_poll_array[i] = _poll_array.back();
-	_poll_array.pop_back();
-}
-
-void Server::handleClientErrors(size_t i)
-{
-	if (_poll_array[i].revents & POLLNVAL)
-		std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (invalid fd)" << std::endl;
-	else if (_poll_array[i].revents & POLLERR)
-		std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (network error)" << std::endl;
-	else
-		std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected" << std::endl;
-	deleteClient(i);
-}
-
-void Server::handleClientPOLLIN(size_t& i)
-{
-	size_t total_read = 0;
-	ssize_t n;
-
-	while (true)
-	{
-		n = recv(_clients[i]->getFd(), _buffer_recv, sizeof(_buffer_recv), 0);
-		if (n > 0)
-		{
-			_clients[i]->getIn().append(_buffer_recv, n);
-			total_read += n;
-			if (_clients[i]->getIn().size() > MAX_CLIENT_INPUT_BUFFER)
-			{
-				std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (input buffer overflow)" << std::endl;
-				deleteClient(i);
-				return;
-			}
-			if (_cmdHandler.handleCommand(_clients[i], i))
-				return;
-			else if (total_read >= MAX_READ_PER_CYCLE)
-				break;
-		}
-		else if (n == 0)
-		{
-			std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected" << std::endl;
-			deleteClient(i);
-			return;
-		}
-		else if (errno == EINTR)
-			checkSignals();
-		else if (errno == EAGAIN || errno == EWOULDBLOCK)
-			break;
-		else
-		{
-			std::cout << "client (fd " << _clients[i]->getFd() << "): disconnected (error)" << std::endl;
-			deleteClient(i);
-			return;
-		}
-	}
-	++i;
+	_pollArray[i] = _pollArray.back();
+	_pollArray.pop_back();
 }
 
 void Server::handleClientEvents()
 {
-	for (size_t i = 1; i < _poll_array.size();)
+	for (size_t i = 1; i < _pollArray.size(); ++i)
 	{
-		if (_poll_array[i].revents & (POLLHUP | POLLERR | POLLNVAL))
-			handleClientErrors(i);
-		else if (_poll_array[i].revents & POLLIN)
-			handleClientPOLLIN(i);
-		else
-			++i;
+		if (_pollArray[i].revents && !_clients[i]->isHardDisconnect())
+		{
+			if (_pollArray[i].revents & (POLLHUP | POLLERR | POLLNVAL))
+			{
+				if (_pollArray[_clients[i]->getFd()].revents & POLLNVAL)
+					std::cout << "client (fd " << _clients[i]->getFd() << ") to disconnect : invalid fd" << std::endl;
+				else if (_pollArray[_clients[i]->getFd()].revents & POLLERR)
+					std::cout << "client (fd " << _clients[i]->getFd() << ") to disconnect : network error" << std::endl;
+				else
+					std::cout << "client (fd " << _clients[i]->getFd() << ") to disconnect" << std::endl;
+				_clients[i]->markHardDisconnect();
+				continue;
+			}
+			if (_pollArray[i].revents & POLLIN)
+				_clients[i]->handlePOLLIN(_cmdHandler);
+			if (_pollArray[i].revents & POLLOUT && !_clients[i]->isHardDisconnect())
+				_clients[i]->handlePOLLOUT();
+		}
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 const std::string& Server::getHostname() const
 {
@@ -214,8 +202,8 @@ const std::string& Server::getPassword() const
 
 Client* Server::getClientByNick(const std::string& nick)
 {
-	std::map<std::string, Client*>::iterator it = _clients_by_nick.find(nick);
-	if (it != _clients_by_nick.end())
+	std::map<std::string, Client*>::iterator it = _clientsByNick.find(nick);
+	if (it != _clientsByNick.end())
 		return it->second;
 	return NULL;
 }
@@ -242,7 +230,7 @@ Channel* Server::getOrCreateChannel(const std::string& name)
 
 void Server::addClientToNickMap(Client* client)
 {
-	_clients_by_nick[client->getNickname()] = client;
+	_clientsByNick[client->getNickname()] = client;
 }
 
 void Server::deleteChannel(const std::string& name)
@@ -258,9 +246,9 @@ void Server::deleteChannel(const std::string& name)
 
 void Server::removeClientFromNickMap(const std::string& nick)
 {
-	std::map<std::string, Client*>::iterator it = _clients_by_nick.find(nick);
-	if (it != _clients_by_nick.end())
-		_clients_by_nick.erase(it);
+	std::map<std::string, Client*>::iterator it = _clientsByNick.find(nick);
+	if (it != _clientsByNick.end())
+		_clientsByNick.erase(it);
 }
 
 void Server::notifyClients(const std::set<std::string>& channels, const std::string& message, Client* exclude = NULL)
@@ -274,21 +262,8 @@ void Server::notifyClients(const std::set<std::string>& channels, const std::str
 		for (std::set<Client*>::const_iterator mit = members.begin(); mit != members.end(); ++mit)
 		{
 			if (*mit != exclude)
-				(*mit)->sendMessage(message);
+				(*mit)->send(message);
 		}
-	}
-}
-
-void Server::notifyClients(Channel* channel, const std::string& message, Client* exclude)
-{
-	if (!channel)
-		return;
-
-	const std::set<Client*>& members = channel->getClients();
-	for (std::set<Client*>::const_iterator it = members.begin(); it != members.end(); ++it)
-	{
-		if (*it != exclude)
-			(*it)->sendMessage(message);
 	}
 }
 
@@ -308,6 +283,6 @@ void Server::sendNamesList(Client& client, Channel* channel)
 			names += "@";
 		names += (*it)->getNickname();
 	}
-	client.sendMessage(":" + _hostname + " 353 " + client.getNickname() + " = " + channel->getName() + " :" + names);
-	client.sendMessage(":" + _hostname + " 366 " + client.getNickname() + " " +channel->getName() + " :End of /NAMES list");
+	client.send(":" + _hostname + " 353 " + client.getNickname() + " = " + channel->getName() + " :" + names);
+	client.send(":" + _hostname + " 366 " + client.getNickname() + " " +channel->getName() + " :End of /NAMES list");
 }
