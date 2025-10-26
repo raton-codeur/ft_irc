@@ -1,6 +1,6 @@
 #include "Client.hpp"
 
-Client::Client(Server& server, int fd, short& pollEvents) : _server(server), _fd(fd), _pollEvents(pollEvents), _outboxOffset(0), _hostname("localhost"), _registered(false), _passwordOk(false), _toDisconnect(false), _hardDisconnect(false), _welcomeSent(false)
+Client::Client(Server& server, int fd) : _server(server), _fd(fd), _outboxOffset(0), _hostname("localhost"), _registered(false), _passwordOk(false), _toDisconnect(false), _hardDisconnect(false), _welcomeSent(false)
 {
 	std::cout << "new client (fd " << fd << ")" << std::endl;
 }
@@ -118,7 +118,6 @@ std::string Client::getPrefix() const
 void Client::send(const std::string& message)
 {
 	_outbox.push_back(message);
-	addPOLLOUT();
 }
 
 // Server &Client::getServer()
@@ -156,20 +155,7 @@ void Client::markWelcomeSent()
 	_welcomeSent = true;
 }
 
-void Client::removePOLLIN()
-{
-	_pollEvents &= ~POLLIN;
-}
 
-void Client::removePOLLOUT()
-{
-	_pollEvents &= ~POLLOUT;
-}
-
-void Client::addPOLLOUT()
-{
-	_pollEvents |= POLLOUT;
-}
 
 
 

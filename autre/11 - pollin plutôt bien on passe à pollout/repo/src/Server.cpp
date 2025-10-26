@@ -92,13 +92,13 @@ void Server::run()
 
 void Server::addClient(int client_fd)
 {
+	_clients.push_back(new Client(*this, client_fd));
+
 	struct pollfd p;
 	p.fd = client_fd;
 	p.events = POLLIN;
 	p.revents = 0;
 	_pollArray.push_back(p);
-
-	_clients.push_back(new Client(*this, client_fd, p.events));
 }
 
 void Server::acceptClients()
@@ -158,7 +158,8 @@ void Server::handleClientEvents()
 			if (_pollArray[i].revents & POLLIN)
 				_clients[i]->handlePOLLIN(_cmdHandler);
 			if (_pollArray[i].revents & POLLOUT && !_clients[i]->isHardDisconnect())
-				_clients[i]->handlePOLLOUT();
+				// _clients[i]->handlePOLLOUT();
+				;
 		}
 	}
 }

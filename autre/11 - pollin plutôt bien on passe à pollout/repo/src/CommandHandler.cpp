@@ -3,22 +3,32 @@
 
 CommandHandler::CommandHandler()
 {
-	_commands["CAP"] = &CommandHandler::cap;
-	_commands["PASS"] = &CommandHandler::pass;
-	_commands["NICK"] = &CommandHandler::nick;
-	_commands["USER"] = &CommandHandler::user;
-	_commands["JOIN"] = &CommandHandler::join;
-	_commands["PRIVMSG"] = &CommandHandler::privmsg;
-	_commands["INVITE"] = &CommandHandler::invite;
-	_commands["KICK"] = &CommandHandler::kick;
-	_commands["PART"] = &CommandHandler::part;
-	_commands["TOPIC"] = &CommandHandler::topic;
-	_commands["PING"] = &CommandHandler::ping;
-	_commands["MODE"] = &CommandHandler::mode;
+	// _commands["CAP"] = &CommandHandler::cap;
+	// _commands["PASS"] = &CommandHandler::pass;
+	// _commands["NICK"] = &CommandHandler::nick;
+	// _commands["USER"] = &CommandHandler::user;
+	// _commands["JOIN"] = &CommandHandler::join;
+	// _commands["PRIVMSG"] = &CommandHandler::privmsg;
+	// _commands["INVITE"] = &CommandHandler::invite;
+	// _commands["KICK"] = &CommandHandler::kick;
+	// _commands["PART"] = &CommandHandler::part;
+	// _commands["TOPIC"] = &CommandHandler::topic;
+	// _commands["PING"] = &CommandHandler::ping;
+	// _commands["MODE"] = &CommandHandler::mode;
 }
 
 CommandHandler::~CommandHandler()
 {}
+
+
+
+
+
+
+
+
+
+
 
 static std::string toUpper(const std::string& s)
 {
@@ -99,89 +109,27 @@ void CommandHandler::parseAndExecute(Client& client, std::string& inbox)
 
 
 
-void CommandHandler::cap(Client& client, const std::vector<std::string>& args)
-{
-	(void)client;
-	(void)args;
-	std::cout << "CAP command received" << std::endl;
-}
 
-void CommandHandler::pass(Client& client, const std::vector<std::string>& args)
-{
-	(void)client;
-	(void)args;
-	std::cout << "PASS command received" << std::endl;
-}
 
-void CommandHandler::nick(Client& client, const std::vector<std::string>& args)
-{
-	(void)client;
-	(void)args;
-	std::cout << "NICK command received" << std::endl;
-}
 
-void CommandHandler::user(Client& client, const std::vector<std::string>& args)
-{
-	(void)client;
-	(void)args;
-	std::cout << "USER command received" << std::endl;
-}
 
-void CommandHandler::join(Client& client, const std::vector<std::string>& args)
-{
-	(void)client;
-	(void)args;
-	std::cout << "JOIN command received" << std::endl;
-}
 
-void CommandHandler::privmsg(Client& client, const std::vector<std::string>& args)
-{
-	(void)client;
-	(void)args;
-	std::cout << "PRIVMSG command received" << std::endl;
-}
 
-void CommandHandler::invite(Client& client, const std::vector<std::string>& args)
-{
-	(void)client;
-	(void)args;
-	std::cout << "INVITE command received" << std::endl;
-}
 
-void CommandHandler::kick(Client& client, const std::vector<std::string>& args)
-{
-	(void)client;
-	(void)args;
-	std::cout << "KICK command received" << std::endl;
-}
 
-void CommandHandler::part(Client& client, const std::vector<std::string>& args)
-{
-	(void)client;
-	(void)args;
-	std::cout << "PART command received" << std::endl;
-}
 
-void CommandHandler::topic(Client& client, const std::vector<std::string>& args)
-{
-	(void)client;
-	(void)args;
-	std::cout << "TOPIC command received" << std::endl;
-}
 
-void CommandHandler::ping(Client& client, const std::vector<std::string>& args)
-{
-	(void)client;
-	(void)args;
-	std::cout << "PING command received" << std::endl;
-}
 
-void CommandHandler::mode(Client& client, const std::vector<std::string>& args)
-{
-	(void)client;
-	(void)args;
-	std::cout << "MODE command received" << std::endl;
-}
+
+
+
+
+
+
+
+
+
+
 
 
 

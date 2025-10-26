@@ -14,7 +14,6 @@ private:
 	// attributes
 	Server& _server;
 	const int _fd;
-	short& _pollEvents;
 	std::string _inbox;
 	char _bufferRecv[_BUFFER_RECV_SIZE];
 	std::deque<std::string> _outbox;
@@ -38,7 +37,7 @@ private:
 public:
 
 	// constructors, destructor
-	Client(Server& server, int fd, short& pollEvents);
+	Client(Server& server, int fd);
 	~Client();
 
 	// get, set, add, remove
@@ -64,9 +63,6 @@ public:
 	bool isHardDisconnect() const;
 	void markToDisconnect();
 	void markHardDisconnect();
-	void removePOLLIN();
-	void removePOLLOUT();
-	void addPOLLOUT();
 
 	// others
 	bool isReadyforWelcome() const;
