@@ -1,6 +1,6 @@
 #include "Client.hpp"
 
-Client::Client(Server& server, int fd, short& pollEvents) : _server(server), _fd(fd), _pollEvents(pollEvents), _outboxOffset(1), _hostname("localhost"), _registered(false), _passwordOk(false), _softDisconnect(false), _hardDisconnect(false), _welcomeSent(false)
+Client::Client(Server& server, int fd, short& pollEvents) : _server(server), _fd(fd), _pollEvents(pollEvents), _outboxOffset(0), _hostname("localhost"), _registered(false), _passwordOk(false), _softDisconnect(false), _hardDisconnect(false), _welcomeSent(false)
 {
 	std::cout << "new client (fd " << fd << ")" << std::endl;
 }
@@ -118,7 +118,7 @@ std::string Client::getPrefix() const
 
 void Client::send(const std::string& message)
 {
-	_outbox.push_back(message + "\r\n");
+	_outbox.push_back(message);
 	addPOLLOUT();
 }
 
@@ -218,7 +218,7 @@ void Client::handlePOLLIN(CommandHandler& cmdHandler)
 			break;
 		else
 		{
-			std::cout << "client (fd " << _fd << "): hard disconnect: recv error" << std::endl;
+			std::cout << "client (fd " << _fd << "): hard disconnect: error" << std::endl;
 			setHardDisconnect();
 			return;
 		}
@@ -235,51 +235,14 @@ void Client::handlePOLLIN(CommandHandler& cmdHandler)
 
 void Client::handlePOLLOUT()
 {
-	const char* message;
-	size_t len;
-	ssize_t n;
-
 	while (!_outbox.empty())
 	{
-		message = _outbox.front().c_str() + _outboxOffset;
-		len = _outbox.front().size() - _outboxOffset;
-		n = ::send(_fd, message, len, 0);
-		if (n >= 0)
-		{
-			_outboxOffset += n;
-			if (_outboxOffset == _outbox.front().size())
-			{
-				_outboxOffset = 0;
-				_outbox.pop_front();
-			}
-		}
-		else if (errno == EINTR)
-			checkSignals();
-		else if (errno == EAGAIN || errno == EWOULDBLOCK)
-			return;
-		else
-		{
-			std::cout << "client (fd " << _fd << "): hard disconnect: send error" << std::endl;
-			setHardDisconnect();
-			return;
-		}
+		std::string s = _outbox.front() + "\n";
+		::send(_fd, s.c_str(), s.size(), 0);
+		_outbox.pop_front();
 	}
 	removePOLLOUT();
 }
-
-
-// void Client::handlePOLLOUT()
-// {
-// 	std::string message;
-
-// 	while (!_outbox.empty())
-// 	{
-// 		message = _outbox.front() + "\r\n";
-// 		::send(_fd, message.c_str(), message.size(), 0);
-// 		_outbox.pop_front();
-// 	}
-// 	removePOLLOUT();
-// }
 
 // void Client::handlePOLLOUT()
 // {

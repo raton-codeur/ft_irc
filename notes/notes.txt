@@ -4,36 +4,48 @@ architecture des classes
 CommandHandler
 une instance publique, initialisée avec le serveur (et stockée dans le serveur)
 
-quand on crée un client, on lui passe une ref privée au serveur (et donc au command handler)
+quand on crée un client, on lui passe une ref privée au serveur (et donc au command handler) + une ref aux events qu'on veut surveiller avec poll
 
-le cmdHandler s'applique sur un client donc il a aussi indirectement la ref au serveur
+le cmdHandler s'applique sur un client donc il a toutes les méthodes publiques du client + une ref à l'inbox du client
 
 
 
 une boucle run du Serveur :
 - acceptClients : accepter des clients
 - handleClientEvents : gérer les buffers du clients, c'est-à-dire, reçevoir et envoyer. on lance peut-être des commandes et on note peut petre des clients à supprimer. on ne supprime pas directement de clients ici.
-- removeClients : supprimer des clients (si on a plus rien à leur envoyer)
+- removeClients : supprimer des clients (si on a plus rien à leur envoyer ou hardDisconnect)
 
 
-"soft disconnect" et "hard disconnect" d'un client
-marqueurs / attributs (dans un client)
-- attribut _toDisconnect
-	- on le lit avec client.isToDisconnect
-	- on le passe à vrai avec client.markToDisconnect
-- attribut _hardDisconnect
-	- on le lit avec client.isHardDisconnect
-	- on le passe à vrai avec client.markHardDisconnect
+
+client
+attributs :
+- _softDisconnect
+- _hardDisconnect
+getters :
+- isSoftDisconnect
+- isHardDisconnect
+
+passage en soft disconnect : setSoftDisconnect
+le client est toujours connecté mais on va le supprimer
+il faut arrêter de surveiller son POLLIN car on arrête de le lire
+on ne touche pas son POLLOUT car on va finir de lui envoyer son outbox avant de le déconnecter
+
+passage en hard disconnect : setHardDisconnect
+le client n'est plus connecté, on va le supprimer
+on pourrait arrêter de surveiller son POLLIN, arrêter de surveiller son POLLOUT, le passer en softDisconnect, mais on va le supprimer tout de suite donc osf
+
+
 
 
 
 
 handleClientEvents
-- si le client est en hard disconnect, il ne faut rien faire de ses buffers, il faut juste le supprimer et notifier les autres clients
-- si le client a trigger une erreur avec poll, on le marque en hard disconnect et on passe au suivant
-- si le client a trigger un POLLIN mais qu'on le marque hard disconnect dans handlePOLLIN, on doit pas handle POLLOUT
-- un client peut trigger POLLIN et / ou POLLOUT à la fois
-- si le client a trigger POLLIN et qu'il se déconnecte (par exemple avec la commande quit), il sera marqué isToDisconnect. il faut arrêter de lire / surveiller son POLLIN mais il faut quand même finir de lui envoyer son outbox (normalement, elle contient un dernier message).
+(si un client est en soft disconnect, poll ne surveille pas son POLLIN)
+- si le client trigger une erreur poll, on le passe en hard disconnect et on passe au client suivant. il sera déco par remove clients tout de suite
+- si le client passe en soft disconect dans handlePOLLIN, on va handlePOLLOUT jusqu'à ce que son outbox soit vide (tout de suite ou en plusieurs fois) puis il se fera déco dans removeClients (si on repasse par handleClientEvents, on ne refait pas handlePOLLIN).
+- si le client passe en hard disconnect dans handlePOLLIN, on passe au client suivant et il se fera déco tout de suite par removeClients.
+
+
 
 
 
@@ -57,24 +69,35 @@ attributs :
 
 
 - boucle sur les clients → pour un client donné qui a trigger POLLIN :
-	- boucle sur recv. on ajoute au plus 2 ko à l’inbox
+	- boucle sur recv. on ajoute au plus 2048 char à l’inbox
 	- on parse l’inbox à la recherche de commande et on les exécute
 
 
-cmdHandler.parseInbox(ref à un client)
-	check max line limit
-	séparateur \n et potentiellement \r\n
+
+
 
 
 
 
 
 outbox d'un client
+c'est une deque de string
+quand on veut envoyer un message à un client, on fait client.send(message). ça ajoute le message à l'outbox (outbox.push_bash(message)) et ça trigger POLLOUT pour savoir quand on peut écrire au client. on met pas \r\n à la fin du message
 
-c'est une deque de string pour pouvoir faire des outbox.push_back, send(outbox.front());, outbox.pop_front();
+handlePOLLOUT
+
+ça indique qu'il y a quelque chose dans l'outbox du client à envoyer.
+on veut faire une boucle : tant que l'outbox n'est pas vide :
+- send(outbox.front())
+- outbox.pop_front()
+puis désactiver POLLOUT
+
+on a _outboxOffset en plus de _outbox
+de base c'est 0
+c'est l'indice dans [le front de _outbox] du début de ce qu'il faut send
 
 
-pour envoyer du texte à un client, on utilise client.send(message). ça ajoute à l'outbox du client.
+
 
 
 
