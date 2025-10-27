@@ -1,32 +1,38 @@
 #include "main.hpp"
 
-volatile sig_atomic_t g_stop_requested = 0;
+volatile sig_atomic_t g_stopRequested = 0;
 
 static void sigint_handler(int signum)
 {
 	(void)signum;
-	g_stop_requested = 1;
+	g_stopRequested = 1;
 }
 
-void set_signal_handlers()
+void setSignalHandlers()
 {
 	struct sigaction sa;
 	sa.sa_handler = sigint_handler;
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
 	if (sigaction(SIGINT,  &sa, NULL) == -1)
-		perror_and_throw("sigaction: SIGINT");
+		perrorAndThrow("sigaction: SIGINT");
 	if (sigaction(SIGTERM, &sa, NULL) == -1)
-		perror_and_throw("sigaction: SIGTERM");
+		perrorAndThrow("sigaction: SIGTERM");
 	if (sigaction(SIGQUIT, &sa, NULL) == -1)
-		perror_and_throw("sigaction: SIGQUIT");
+		perrorAndThrow("sigaction: SIGQUIT");
 	if (sigaction(SIGHUP,  &sa, NULL) == -1)
-		perror_and_throw("sigaction: SIGHUP");
+		perrorAndThrow("sigaction: SIGHUP");
 
 	struct sigaction sa_ign;
 	sa_ign.sa_handler = SIG_IGN;
 	sigemptyset(&sa_ign.sa_mask);
 	sa_ign.sa_flags = 0;
 	if (sigaction(SIGPIPE, &sa_ign, NULL) == -1)
-		perror_and_throw("sigaction: SIGPIPE");
+		perrorAndThrow("sigaction: SIGPIPE");
+}
+
+void checkSignals()
+{
+	if (g_stopRequested)
+		throw StopRequested();
 }

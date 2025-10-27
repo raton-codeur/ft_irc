@@ -11,9 +11,14 @@ const std::string& Channel::getName() const
 	return _name;
 }
 
-void Channel::setName(const std::string &name)
+const std::string& Channel::getTopic() const
 {
-	_name = name;
+	return (_topic);
+}
+
+void Channel::setTopic(const std::string &topic)
+{
+	_topic = topic;
 }
 
 const std::string &Channel::getKey() const
@@ -26,12 +31,12 @@ void Channel::setKey(const std::string &key)
 	_key = key;
 }
 
-const size_t &Channel::getLimit() const
+size_t Channel::getLimit() const
 {
 	return _limit;
 }
 
-void Channel::setLimit(const size_t &limit)
+void Channel::setLimit(size_t limit)
 {
 	_limit = limit;
 }
@@ -51,14 +56,14 @@ bool Channel::hasMode(int flag) const
 	return (_mode & flag);
 }
 
-void Channel::setTopic(const std::string &topic)
+const std::set<Client *> &Channel::getMembers() const
 {
-	_topic = topic;
+	return _members;
 }
 
-const std::string& Channel::getTopic() const
+bool Channel::isMember(Client *client) const
 {
-	return (_topic);
+	return (_members.find(client) != _members.end());
 }
 
 void Channel::addMember(Client *client)
@@ -71,9 +76,14 @@ void Channel::removeMember(Client *client)
 	_members.erase(client);
 }
 
-bool Channel::isMember(Client *client) const
+const std::set<Client*>& Channel::getOperators() const
 {
-	return (_members.find(client) != _members.end());
+	return _operators;
+}
+
+bool Channel::isOperator(Client *client) const
+{
+	return (_operators.find(client) != _operators.end());
 }
 
 void Channel::addOperator(Client *client)
@@ -86,14 +96,9 @@ void Channel::removeOperator(Client *client)
 	_operators.erase(client);
 }
 
-bool Channel::isOperator(Client *client) const
+bool Channel::isInvited(Client *client) const
 {
-	return (_operators.find(client) != _operators.end());
-}
-
-std::set<Client *> Channel::getOperators() const
-{
-	return _operators;
+	return (_invited.find(client) != _invited.end());
 }
 
 void Channel::invite(Client *client)
@@ -101,19 +106,7 @@ void Channel::invite(Client *client)
 	_invited.insert(client);
 }
 
-bool Channel::isInvited(Client *client) const
-{
-	return (_invited.find(client) != _invited.end());
-}
-
-
 void Channel::removeInvite(Client *client)
 {
 	_invited.erase(client);
 }
-
-const std::set<Client *> &Channel::getClients() const
-{
-	return _members;
-}
-

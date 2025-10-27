@@ -1,6 +1,7 @@
 #include "Client.hpp"
+#include "CommandHandler.hpp"
 
-Client::Client(Server& server, int fd) : _server(server), _fd(fd), _hostname("localhost"), _registered(false), _password_ok(false), _to_disconnect(false), _welcome_sent(false)
+Client::Client(Server& server, int fd, short& pollEvents) : _server(server), _fd(fd), _pollEvents(pollEvents), _outboxOffset(0), _hostname("localhost"), _registered(false), _passwordOk(false), _welcomeSent(false), _softDisconnect(false), _hardDisconnect(false)
 {
 	std::cout << "new client (fd " << fd << ")" << std::endl;
 }
@@ -8,7 +9,7 @@ Client::Client(Server& server, int fd) : _server(server), _fd(fd), _hostname("lo
 Client::~Client()
 {
 	close(_fd);
-	std::cout << "client (fd " << _fd << "): freed" << std::endl;
+	std::cout << "fd " << _fd << ": closed" << std::endl;
 }
 
 int Client::getFd() const
@@ -26,11 +27,6 @@ void Client::setNickname(const std::string& nickname)
 	_nickname = nickname;
 }
 
-std::string Client::getHostname() const
-{
-	return _hostname;
-}
-
 const std::string& Client::getUsername() const
 {
 	return _username;
@@ -46,13 +42,23 @@ bool Client::hasUsername() const
 	return !_username.empty();
 }
 
-const std::string &Client::getRealname() const
+const std::string& Client::getRealname() const
 {
 	return _realname;
 }
-void Client::setRealname(const std::string &realname)
+void Client::setRealname(const std::string& realname)
 {
 	_realname = realname;
+}
+
+std::string Client::getHostname() const
+{
+	return _hostname;
+}
+
+std::string Client::getPrefix() const
+{
+	return ":" + _nickname + "!" + _username + "@" + _hostname;
 }
 
 bool Client::isRegistered() const
@@ -65,6 +71,51 @@ void Client::setRegistered()
 	_registered = true;
 }
 
+bool Client::isPasswordOk() const
+{
+	return _passwordOk;
+}
+
+void Client::setPasswordOk()
+{
+	_passwordOk = true;
+}
+
+bool Client::isReadyforWelcome() const
+{
+	return (!isRegistered() && hasUsername() && !getNickname().empty() && isPasswordOk());
+}
+
+void Client::sendWelcome(const std::string& hostname)
+{
+	if (isReadyforWelcome() && !hasWelcomeBeenSent())
+	{
+		setRegistered();
+		send(":" + hostname + " 001 " + getNickname() + " :Welcome to the IRC network " + hostname);
+		markWelcomeSent();
+	}
+}
+
+bool Client::hasWelcomeBeenSent() const
+{
+	return _welcomeSent;
+}
+
+void Client::markWelcomeSent()
+{
+	_welcomeSent = true;
+}
+
+const std::set<std::string>& Client::getChannels() const
+{
+	return _channels;
+}
+
+bool Client::isInChannel(const std::string& name) const
+{
+	return (_channels.find(name) != _channels.end());
+}
+
 void Client::addToChannel(const std::string& name)
 {
 	_channels.insert(name);
@@ -75,79 +126,129 @@ void Client::removeFromChannel(const std::string& name)
 	_channels.erase(name);
 }
 
-bool Client::isInChannel(const std::string& name) const
+bool Client::isSoftDisconnect() const
 {
-	return (_channels.find(name) != _channels.end());
+	return _softDisconnect;
 }
 
-bool Client::isPasswordOk() const
+bool Client::isHardDisconnect() const
 {
-	return _password_ok;
+	return _hardDisconnect;
 }
 
-void Client::setPasswordOk()
+void Client::setSoftDisconnect(const std::string& logServer, const std::string& logClient)
 {
-	_password_ok = true;
+	_softDisconnect = true;
+	_disconnectLog = logServer;
+	if (!logClient.empty())
+		send(logClient);
+	removePOLLIN();
 }
 
-bool Client::toDisconnect() const
+void Client::setHardDisconnect(const std::string& logServer)
 {
-	return _to_disconnect;
+	_hardDisconnect = true;
+	_disconnectLog = logServer;
 }
 
-void Client::markToDisconnect()
+bool Client::hasEmptyOutbox() const
 {
-	_to_disconnect = true;
+	return _outbox.empty();
 }
 
-std::string Client::getPrefix() const
+void Client::printDisconnectLog() const
 {
-	return ":" + _nickname + "!" + _username + "@" + _hostname;
+	if (!_disconnectLog.empty())
+		std::cout << _disconnectLog << std::endl;
 }
 
-std::string& Client::getIn()
+void Client::removePOLLIN()
 {
-	return _in;
+	_pollEvents &= ~POLLIN;
 }
 
-Server &Client::getServer()
+void Client::removePOLLOUT()
 {
-	return _server;
+	_pollEvents &= ~POLLOUT;
 }
 
-const std::set<std::string> &Client::getChannels() const
+void Client::addPOLLOUT()
 {
-	return _channels;
+	_pollEvents |= POLLOUT;
 }
 
-bool Client::isReadyforWelcome() const
+void Client::send(const std::string& message)
 {
-	return (!isRegistered() && hasUsername() && !getNickname().empty() && isPasswordOk());
+	_outbox.push_back(message + "\r\n");
+	addPOLLOUT();
 }
 
-void Client::sendWelcome(const std::string &hostname)
+void Client::handlePOLLIN(CommandHandler& cmdHandler)
 {
-	if (isReadyforWelcome() && !hasWelcomeBeenSent())
+	size_t total_read = 0;
+	ssize_t n;
+
+	while (true)
 	{
-		setRegistered();
-		sendMessage(":" + hostname + " 001 " + getNickname() + " :Welcome to the IRC network " + hostname);
-		markWelcomeSent();
+		n = recv(_fd, _bufferRecv, _BUFFER_RECV_SIZE, 0);
+		if (n > 0)
+		{
+			_inbox.append(_bufferRecv, n);
+			total_read += n;
+			if (total_read >= _MAX_RECV_PER_CLIENT)
+				break;
+		}
+		else if (n == 0)
+		{
+			setHardDisconnect("client (fd " + std::to_string(_fd) + "): hard disconnect: disconnected");
+			return;
+		}
+		else if (errno == EINTR)
+			checkSignals();
+		else if (errno == EAGAIN || errno == EWOULDBLOCK)
+			break;
+		else
+		{
+			setHardDisconnect("client (fd " + std::to_string(_fd) + "): hard disconnect: recv error");
+			return;
+		}
 	}
+	cmdHandler.parseAndExecute(*this, _inbox);
 }
 
-void Client::sendMessage(const std::string &message) const
+void Client::handlePOLLOUT()
 {
-	std::string msg = message + "\r\n";
-	if (send(_fd, msg.c_str(), msg.size(), 0) == -1)
-		std::cerr << "Failed to send message to client fd " << _fd << std::endl;
-}
+	const char* message;
+	size_t len;
+	ssize_t n;
+	size_t total_sent = 0;
 
-bool Client::hasWelcomeBeenSent() const
-{
-	return _welcome_sent;
-}
-
-void Client::markWelcomeSent()
-{
-	_welcome_sent = true;
+	while (!_outbox.empty())
+	{
+		message = _outbox.front().c_str() + _outboxOffset;
+		len = _outbox.front().size() - _outboxOffset;
+		n = ::send(_fd, message, len, 0);
+		if (n >= 0)
+		{
+			total_sent += n;
+			_outboxOffset += n;
+			if (_outboxOffset == _outbox.front().size())
+			{
+				_outboxOffset = 0;
+				_outbox.pop_front();
+			}
+			if (total_sent >= _MAX_SEND_PER_CLIENT)
+				return;
+		}
+		else if (errno == EINTR)
+			checkSignals();
+		else if (errno == EAGAIN || errno == EWOULDBLOCK)
+			return;
+		else
+		{
+			setHardDisconnect("client (fd " + std::to_string(_fd) + "): hard disconnect: send error");
+			return;
+		}
+	}
+	removePOLLOUT();
 }

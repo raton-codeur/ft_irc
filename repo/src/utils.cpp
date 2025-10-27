@@ -1,6 +1,6 @@
 #include "main.hpp"
 
-void perror_and_throw(const char* message)
+void perrorAndThrow(const char* message)
 {
 	if (message)
 		throw std::runtime_error(std::string(message) + ": " + std::strerror(errno));
@@ -8,7 +8,7 @@ void perror_and_throw(const char* message)
 		throw std::runtime_error(std::strerror(errno));
 }
 
-void error_and_throw(const char* message)
+void errorAndThrow(const char* message)
 {
 	if (message)
 		throw std::runtime_error(message);

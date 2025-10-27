@@ -2,7 +2,7 @@
 #include "main.hpp"
 #include "Client.hpp"
 
-enum e_mode
+enum ChannelMode
 {
 	NONE = 0,
 	INVITE_ONLY = 1,
@@ -15,7 +15,8 @@ class Channel
 {
 private:
 
-	std::string _name;
+	// attributes
+	const std::string _name;
 	std::string _topic;
 	std::string _key;
 	size_t _limit;
@@ -24,42 +25,43 @@ private:
 	std::set<Client*> _operators;
 	std::set<Client*> _invited;
 
+	// disabled
+	Channel();
 	Channel(const Channel&);
 	Channel& operator=(const Channel&);
 
 public:
 
+	// constructor, destructor
 	Channel(const std::string& name);
 	~Channel();
 
+	// get, set, add, remove
 	const std::string& getName() const;
-	void  setName(const std::string& name);
-
+	const std::string& getTopic() const;
+	void setTopic(const std::string &topic);
 	const std::string& getKey() const;
 	void setKey(const std::string& key);
-
-	const size_t& getLimit() const;
-	void setLimit(const size_t& limit);
-
+	size_t getLimit() const;
+	void setLimit(size_t limit);
 	void setMode(int flag);
 	void unsetMode(int flag);
 	bool hasMode(int flag) const;
 
-	const std::string& getTopic() const;
-	void setTopic(const std::string &topic);
-	
+	// get, add, remove <-> members
+	const std::set<Client*>& getMembers() const;
+	bool isMember(Client* client) const;
 	void addMember(Client* client);
 	void removeMember(Client* client);
-	bool isMember(Client* client) const;
 
+	// get, add, remove <-> operators
+	const std::set<Client*>& getOperators() const;
+	bool isOperator(Client* client) const;
 	void addOperator(Client* client);
 	void removeOperator(Client* client);
-	bool isOperator(Client* client) const;
-	std::set<Client*> getOperators() const;
 
+	// <-> invited
+	bool isInvited(Client* client) const;
 	void invite(Client* client);
 	void removeInvite(Client* client);
-	bool isInvited(Client* client) const;
-
-	const std::set<Client*>& getClients() const;
 };

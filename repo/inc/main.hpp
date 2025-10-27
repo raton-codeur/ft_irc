@@ -2,12 +2,12 @@
 
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <stdexcept>
-#include <list>
 #include <map>
 #include <vector>
 #include <set>
-#include <sstream>
+#include <deque>
 
 #include <cstdio>
 #include <cstring>
@@ -19,11 +19,14 @@
 #include <fcntl.h>
 #include <poll.h>
 
-extern volatile sig_atomic_t g_stop_requested;
+struct StopRequested {};
 
-// signal.cpp
-void set_signal_handlers();
+extern volatile sig_atomic_t g_stopRequested;
+
+// signals.cpp
+void setSignalHandlers();
+void checkSignals();
 
 // utils.cpp
-void perror_and_throw(const char* message);
-void error_and_throw(const char* message);
+void perrorAndThrow(const char* message);
+void errorAndThrow(const char* message);
