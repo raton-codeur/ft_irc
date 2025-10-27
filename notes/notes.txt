@@ -29,11 +29,12 @@ passage en soft disconnect : setSoftDisconnect
 le client est toujours connecté mais on va le supprimer
 il faut arrêter de surveiller son POLLIN car on arrête de le lire
 on ne touche pas son POLLOUT car on va finir de lui envoyer son outbox avant de le déconnecter
+paramètre : une chaine de log pour le serveur et une chaine de log pour le client. on stocke la chaine de log pour le serveur dans _disconnectLog et on le serveur l'affichera au moment où il fait deleteClient. la chaine de log pour le client est ajoutée à l'outbox du client
 
 passage en hard disconnect : setHardDisconnect
 le client n'est plus connecté, on va le supprimer
 on pourrait arrêter de surveiller son POLLIN, arrêter de surveiller son POLLOUT, le passer en softDisconnect, mais on va le supprimer tout de suite donc osf
-
+paramètre : une chaine de log pour le serveur. on la stocke dans _disconnectLog et on l'affiche au moment où on appelle deleteClient
 
 
 
@@ -59,7 +60,6 @@ handlePOLLIN peut passer le client en soft / hard disconnect
 
 
 
-
 attributs :
 - _BUFFER_RECV_SIZE (1024)
 - _bufferRecv[_BUFFER_RECV_SIZE] (tableau de char)
@@ -74,6 +74,13 @@ attributs :
 
 
 
+cmdHandler.parseAndExecute(ref au client, ref à l'inbox du client)
+	si on trouve une ligne complète dans l'inbox
+		vérifier que la ligne fasse moins de 512 char. sinon, on setHardDisconnect et on quitte
+		split la ligne en arguments
+		appeler la bonne fonction sur client + arguments
+
+
 
 
 
@@ -81,8 +88,12 @@ attributs :
 
 
 outbox d'un client
+
 c'est une deque de string
+
 quand on veut envoyer un message à un client, on fait client.send(message). ça ajoute le message à l'outbox (outbox.push_bash(message)) et ça trigger POLLOUT pour savoir quand on peut écrire au client. on met pas \r\n à la fin du message
+
+
 
 handlePOLLOUT
 
@@ -106,20 +117,13 @@ c'est l'indice dans [le front de _outbox] du début de ce qu'il faut send
 -
 plus tard
 
+
+
 revoir delete client dans le serveur pour supprimer le client des channels, notifier les autres clients
 
 méthode client.disconnect ?
 on a server.delete(index d'un client)
 
-paramètre pour markToDisconnect : une chaine "why" pour pouvoir faire :
-_outbox.push_back("ERROR :Closing Link: " + _nick + " (" + why + ")\r\n");
-
-paramètre pour markHardDisconnect : une chaine "why" pour faire :
-std::cerr << "[ERROR] Client " << _nick << " disconnected: " << why << std::endl;
-
-il faut disable POLLIN lors d'un [soft / hard] disconnect
-on arrêter de lire un client quand on va le déconnecter. pour un soft, on continue de lui écrire.
-ça simplifie cette ligne dans handleClientEvents : if (_poll_array[i].revents & POLLIN && !_clients[i]->isToDisconnect())
 
 
 
@@ -129,18 +133,5 @@ on arrêter de lire un client quand on va le déconnecter. pour un soft, on cont
 
 
 
-cmdHandler
 
-checkInbox
 
-quand on reçoit des données dans le buffer d'un client, il faut parser le buffer.
-on ajoute "handle buffer" à la classe "handle command".
-
-on appelle "handle buffer" pour voir si :
-- on a pas dépassé le "max client input buffer"
-- on a des lignes à traiter (il y a \n ou \r\n)
-- chaque ligne ne dépasse pas "max line length"
-
-handle buffer renvoie 0 sauf si on a marqué le client pour suppression (et donc qu'on arrête de lire son inbox)
-
-si il y a une ligne à traiter, il faut la split en arguments et appeler la bonne fonction avec les arguments
