@@ -18,7 +18,7 @@ private:
 	std::string _hostname;
 	int _server_fd;
 	std::vector<Client*> _clients;
-	std::vector<struct pollfd*> _pollArray;
+	std::vector<struct pollfd> _pollArray;
 	std::map<std::string, Client*> _clientsByNick;
 	std::map<std::string, Channel*> _channels;
 	CommandHandler _cmdHandler;
@@ -37,7 +37,7 @@ private:
 	Server(const Server&);
 	Server& operator=(const Server&);
 
-	public:
+public:
 
 	// constructor, destructor
 	Server(int argc, char** argv);
@@ -55,6 +55,11 @@ private:
 	Channel* getChannel(const std::string& name);
 	Channel* getOrCreateChannel(const std::string& name);
 	void deleteChannel(const std::string& name);
+
+	// change poll events
+	void removePOLLIN(size_t i);
+	void removePOLLOUT(size_t i);
+	void addPOLLOUT(size_t i);
 
 	// others
 	void notifyClients(const std::set<std::string>& channels, const std::string& message, Client* exclude);
