@@ -1,7 +1,7 @@
 #include "Client.hpp"
 #include "CommandHandler.hpp"
 
-Client::Client(Server& server, int fd, short& pollEvents) : _server(server), _fd(fd), _pollEvents(pollEvents), _outboxOffset(0), _hostname("localhost"), _registered(false), _passwordOk(false), _welcomeSent(false), _softDisconnect(false), _hardDisconnect(false)
+Client::Client(Server& server, int fd, short& pollEvents) : _server(server), _fd(fd), _pollEvents(pollEvents), _outboxOffset(0), _hostname("localhost"), _registered(false), _passwordOk(false), _softDisconnect(false), _hardDisconnect(false)
 {
 	std::cout << "new client (fd " << fd << ")" << std::endl;
 }
@@ -81,29 +81,9 @@ void Client::setPasswordOk()
 	_passwordOk = true;
 }
 
-bool Client::isReadyforWelcome() const
+Server &Client::getServer()
 {
-	return (!isRegistered() && hasUsername() && !getNickname().empty() && isPasswordOk());
-}
-
-void Client::sendWelcome(const std::string& hostname)
-{
-	if (isReadyforWelcome() && !hasWelcomeBeenSent())
-	{
-		setRegistered();
-		send(":" + hostname + " 001 " + getNickname() + " :Welcome to the IRC network " + hostname);
-		markWelcomeSent();
-	}
-}
-
-bool Client::hasWelcomeBeenSent() const
-{
-	return _welcomeSent;
-}
-
-void Client::markWelcomeSent()
-{
-	_welcomeSent = true;
+	return _server;
 }
 
 const std::set<std::string>& Client::getChannels() const
@@ -214,9 +194,11 @@ void Client::handlePOLLIN(CommandHandler& cmdHandler)
 		}
 	}
 	cmdHandler.parseAndExecute(*this, _inbox);
+}
+
 void Client::tryRegisterClient(const std::string& hostname)
 {
-	if (_registered || !_password_ok || _nickname.empty() || _username.empty())
+	if (_registered || !_passwordOk || _nickname.empty() || _username.empty())
 		return;
 	_registered = true;
 	sendWelcome(hostname);
@@ -227,13 +209,13 @@ void Client::sendWelcome(const std::string &hostname)
 
 	std::string nick = _nickname.empty() ? "*" : _nickname;
 
-	sendMessage(":" + hostname + " 001 " + nick + " :Welcome to the IRC network " + hostname);
-	sendMessage(":" + hostname + " 002 " + nick + " :Your host is " + hostname);
-	sendMessage(":" + hostname + " 003 " + nick + " :This server was created just now");
-	sendMessage(":" + hostname + " 004 " + nick + " " + hostname + " 1.0 i o t k l");
-	sendMessage(":" + hostname + " 375 " + nick + " :- " + hostname + " Message of the day - ");
-	sendMessage(":" + hostname + " 372 " + nick + " :- Vive les crepes!");
-	sendMessage(":" + hostname + " 376 " + nick + " :End of /MOTD command.");
+	send(":" + hostname + " 001 " + nick + " :Welcome to the IRC network " + hostname);
+	send(":" + hostname + " 002 " + nick + " :Your host is " + hostname);
+	send(":" + hostname + " 003 " + nick + " :This server was created just now");
+	send(":" + hostname + " 004 " + nick + " " + hostname + " 1.0 i o t k l");
+	send(":" + hostname + " 375 " + nick + " :- " + hostname + " Message of the day - ");
+	send(":" + hostname + " 372 " + nick + " :- Vive les crepes!");
+	send(":" + hostname + " 376 " + nick + " :End of /MOTD command.");
 }
 
 void Client::handlePOLLOUT()

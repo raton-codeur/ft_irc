@@ -1,6 +1,6 @@
 #include "Channel.hpp"
 
-Channel::Channel(const std::string& name) : _name(name), _mode(0)
+Channel::Channel(const std::string& name) : _name(name), _topic(), _key(), _limit(0), _mode(0)
 {}
 
 Channel::~Channel()
@@ -16,10 +16,6 @@ const std::string& Channel::getTopic() const
 	return (_topic);
 }
 
-void Channel::setTopic(const std::string &topic)
-{
-	_topic = topic;
-}
 
 const std::string &Channel::getKey() const
 {
@@ -84,7 +80,12 @@ void Channel::setTopic(const std::string &topic)
 	_topic = topic;
 }
 
-const std::string& Channel::getTopic() const
+const std::set<Client*>& Channel::getMembers() const
+{
+	return _members;
+}
+
+bool Channel::isMember(Client *client) const
 {
 	return (_members.find(client) != _members.end());
 }

@@ -30,10 +30,6 @@ private:
 	bool _softDisconnect;
 	bool _hardDisconnect;
 	std::string _disconnectLog;
-	bool _password_ok;
-	bool _to_disconnect;
-	std::string _in;
-	std::string _out;
 	std::set<std::string> _channels;
 
 	// utils
@@ -69,16 +65,9 @@ public:
 	void setRegistered();
 	bool isPasswordOk() const;
 	void setPasswordOk();
-	bool toDisconnect() const;
-	void markToDisconnect();
-	std::string getPrefix() const;
-	std::string& getIn();
 	Server& getServer();
-	const std::set<std::string>& getChannels() const;
 	void tryRegisterClient(const std::string& hostname);
 	void sendWelcome(const std::string& hostname);
-	bool hasWelcomeBeenSent() const;
-	void markWelcomeSent();
 
 	// <-> channels
 	const std::set<std::string>& getChannels() const;

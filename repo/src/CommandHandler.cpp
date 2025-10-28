@@ -104,16 +104,6 @@ bool CommandHandler::checkRegistered(Client &client)
 	return true;
 }
 
-void CommandHandler::ping(Client &client, const std::vector<std::string> &args)
-{
-	if (args.size() < 2)
-	{
-		client.send(":" + _server.getHostname() + " 409 " + client.getNickname() + " :No origin specified");
-		return;
-	}
-	client.send("PONG :" + args[1]);
-}
-
 void CommandHandler::cap(Client &client, const std::vector<std::string> &args)
 {
 	std::cout << "CAP command received" << std::endl;
@@ -270,7 +260,8 @@ void CommandHandler::join(Client& client, const std::vector<std::string>& args)
 		return;
 	}
 	std::string channel_name = args[1];
-	if (channel_name.empty()) return;
+	if (channel_name.empty())
+		return;
 	std::string key;
 	if (args.size() >= 3)
 		key = args[2];
@@ -315,29 +306,6 @@ void CommandHandler::join(Client& client, const std::vector<std::string>& args)
 		client.send(":" + server.getHostname() + " 332 " + client.getNickname() + " " + channel_name + " :" + channel->getTopic());
 
 	server.sendNamesList(client, channel);
-}
-
-void CommandHandler::join(Client& client, const std::vector<std::string>& args)
-{
-	if (!checkRegistered(client))
-		return;
-
-	std::cout << "JOIN command received" << std::endl;
-
-	if (args.size() < 2)
-	{
-		client.send(":" + _server.getHostname() + " 461 JOIN :Not enough parameters");
-		return;
-	}
-	std::vector<std::string> channels = splitByChar(args[1], ',');
-	std::vector<std::string> keys;
-	if (args.size() >= 3)
-		keys = splitByChar(args[2], ',');
-	for (size_t i = 0; i < channels.size(); ++i)
-	{
-		std::string key = (i < keys.size()) ? keys[i] : "";
-		joinSingleChannel(client, channels[i], key, _server);
-	}
 }
 
 void CommandHandler::ping(Client &client, const std::vector<std::string> &args)
@@ -421,7 +389,7 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 	std::cout << "MODE command received" << std::endl;
 	if (args.size() < 2)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 461 MODE :Not enough parameters");
+		client.send(":" + _server.getHostname() + " 461 MODE :Not enough parameters");
 		return;
 	}
 
@@ -429,26 +397,26 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 
 	if (!channel)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 403 " + args[1] + " :No such channel");
+		client.send(":" + _server.getHostname() + " 403 " + args[1] + " :No such channel");
 		return;
 	}
 
 	if (!channel->isMember(&client))
 	{
-		client.sendMessage(":" + _server.getHostname() + " 442 " + args[1] + " :You're not on that channel");
+		client.send(":" + _server.getHostname() + " 442 " + args[1] + " :You're not on that channel");
 		return;
 	}
 
 	if (args.size() == 2)
 	{
 		std::string modes = channel->getModesAsString();
-		client.sendMessage(":" + _server.getHostname() + " 324 " + client.getNickname() + " " + channel->getName() + " :" + modes);
+		client.send(":" + _server.getHostname() + " 324 " + client.getNickname() + " " + channel->getName() + " :" + modes);
 		return;
 	}
 	
 	if (!channel->isOperator(&client))
 	{
-		client.sendMessage(":" + _server.getHostname() + " 482 " + args[1] + " :You're not channel operator");
+		client.send(":" + _server.getHostname() + " 482 " + args[1] + " :You're not channel operator");
 		return;
 	}
 
@@ -475,7 +443,8 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 			adding = (c == '+');
         	continue;
 		}
-		
+		std::cout << "DEBUG MODE: char=" << c << " adding=" << adding << " index=" << index 
+          << "/" << mode_params.size() << std::endl;
 		switch (c)
 		{
 		case 'i':
@@ -483,7 +452,7 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 			{
 				if (channel->hasMode(INVITE_ONLY))
 				{
-					client.sendMessage(":" + _server.getHostname() + " 467 " + channel->getName() + " :Channel is already invite-only");
+					client.send(":" + _server.getHostname() + " 467 " + channel->getName() + " :Channel is already invite-only");
 					return;
 				}
 				channel->setMode(INVITE_ONLY);
@@ -497,7 +466,7 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 			{
 				if (channel->hasMode(PROTECTED_TOPIC))
 				{
-					client.sendMessage(":" + _server.getHostname() + " 467 " + channel->getName() + " :Channel topic is already protected");
+					client.send(":" + _server.getHostname() + " 467 " + channel->getName() + " :Channel topic is already protected");
 					return;
 				}
 				channel->setMode(PROTECTED_TOPIC);
@@ -511,12 +480,12 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 			{
 				if (index >= mode_params.size())
 				{
-					client.sendMessage(":" + _server.getHostname() + " 461 MODE :Not enough parameters");
+					client.send(":" + _server.getHostname() + " 461 MODE :Not enough parameters");
 					return;
 				}
 				if (!checkKey(mode_params[index]))
 				{
-					client.sendMessage(":" + _server.getHostname() + " 501 MODE :Invalid key parameter");
+					client.send(":" + _server.getHostname() + " 501 MODE :Invalid key parameter");
 					return;
 				}
 				channel->setMode(KEY);
@@ -532,11 +501,12 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 			mode_signs += 'k';
 			break;
 		case 'l':
+			std::cout << "DEBUG accessing mode_params[" << index << "]" << std::endl;
 			if (adding)
 			{
 				if (index >= mode_params.size())
 				{
-					client.sendMessage(":" + _server.getHostname() + " 461 MODE :Not enough parameters");
+					client.send(":" + _server.getHostname() + " 461 MODE :Not enough parameters");
 					return;
 				}
 				long limit;
@@ -546,13 +516,13 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 				}
 				catch(...)
 				{
-					client.sendMessage(":" + _server.getHostname() + " 501 MODE :Invalid limit parameter");
+					client.send(":" + _server.getHostname() + " 501 MODE :Invalid limit parameter");
 					return;
 				}
 				
 				if (limit <= 0 || limit > INT_MAX)
 				{
-					client.sendMessage(":" + _server.getHostname() + " 501 MODE :Invalid limit parameter");
+					client.send(":" + _server.getHostname() + " 501 MODE :Invalid limit parameter");
 					return;
 				}
 				channel->setMode(LIMIT);
@@ -570,7 +540,7 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 		case 'o':
 			if (index >= mode_params.size())
 			{
-				client.sendMessage(":" + _server.getHostname() + " 461 MODE :Not enough parameters");
+				client.send(":" + _server.getHostname() + " 461 MODE :Not enough parameters");
 				return;
 			}
 			{
@@ -578,14 +548,14 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 				Client* target_client = _server.getClientByNick(target_nick);
 				if (!target_client || !channel->isMember(target_client))
 				{
-					client.sendMessage(":" + _server.getHostname() + " 441 " + target_nick + " " + channel->getName() + " :They aren't on that channel");
+					client.send(":" + _server.getHostname() + " 441 " + target_nick + " " + channel->getName() + " :They aren't on that channel");
 					return;
 				}
 				if (adding)
 				{
 					if (channel->isOperator(target_client))
 					{
-						client.sendMessage(":" + _server.getHostname() + " 467 " + target_nick + " :is already a channel operator");
+						client.send(":" + _server.getHostname() + " 467 " + target_nick + " :is already a channel operator");
 						return;
 					}
 					channel->addOperator(target_client);
@@ -596,7 +566,7 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 			mode_signs += 'o';
 			break;
 		default:
-			client.sendMessage(":" + _server.getHostname() + " 472 " + c + " :is unknown mode char to me");
+			client.send(":" + _server.getHostname() + " 472 " + c + " :is unknown mode char to me");
 			break;
 		}
 	}
@@ -729,17 +699,17 @@ void CommandHandler::kick(Client& client, const std::vector<std::string>& args)
 	Client* target_client = _server.getClientByNick(target_nick);
 	if (!target_client || !channel->isMember(target_client))
 	{
-		client.sendMessage(":" + _server.getHostname() + " 441 " + target_nick + " " + channel_name + " :They aren't on that channel");
+		client.send(":" + _server.getHostname() + " 441 " + target_nick + " " + channel_name + " :They aren't on that channel");
 		return;
 	}
 	channel->removeMember(target_client);
 	if (channel->isOperator(target_client))
 		channel->removeOperator(target_client);
-	target_client->removeFromChannel(channel_name);
 	std::string kick_msg = ":" + client.getPrefix() + " KICK " + channel_name + " " + target_nick;
 	if (!reason.empty())
 		kick_msg += " :" + reason;
 	_server.notifyClients(channel, kick_msg, nullptr);
+	target_client->removeFromChannel(channel_name);
 }
 
 
