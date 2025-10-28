@@ -1,112 +1,117 @@
 #include "CommandHandler.hpp"
-#include "main.hpp"
+#include "Client.hpp"
 #include "Server.hpp"
+#include "Channel.hpp"
 
 CommandHandler::CommandHandler(Server& server) : _server(server)
 {
+	_commands["PING"] = &CommandHandler::ping;
 	_commands["CAP"] = &CommandHandler::cap;
 	_commands["PASS"] = &CommandHandler::pass;
 	_commands["NICK"] = &CommandHandler::nick;
 	_commands["USER"] = &CommandHandler::user;
 	_commands["JOIN"] = &CommandHandler::join;
-	_commands["PRIVMSG"] = &CommandHandler::privmsg;
-	_commands["INVITE"] = &CommandHandler::invite;
-	_commands["KICK"] = &CommandHandler::kick;
 	_commands["PART"] = &CommandHandler::part;
+	_commands["PRIVMSG"] = &CommandHandler::privmsg;
+	_commands["KICK"] = &CommandHandler::kick;
+	_commands["INVITE"] = &CommandHandler::invite;
 	_commands["TOPIC"] = &CommandHandler::topic;
-	_commands["PING"] = &CommandHandler::ping;
 	_commands["MODE"] = &CommandHandler::mode;
 }
 
 CommandHandler::~CommandHandler()
 {}
 
-std::vector<std::string> CommandHandler::_split(const std::string& input)
+static std::string toUpper(const std::string& s)
+{
+	std::string result(s);
+    for (size_t i = 0; i < s.size(); ++i)
+        result[i] = std::toupper(static_cast<unsigned char>(s[i]));
+    return result;
+}
+
+static std::vector<std::string> split(const std::string& line)
 {
 	std::vector<std::string> result;
 	size_t i = 0;
-	size_t len = input.size();
+	size_t len = line.size();
 
 	while (i < len)
 	{
-		while (i < len && std::isspace(static_cast<unsigned char>(input[i])))
+		while (i < len && std::isspace(static_cast<unsigned char>(line[i])))
 			i++;
 		if (i >= len)
 			break;
-		if (input[i] == ':')
+		if (line[i] == ':')
 		{
-			result.push_back(input.substr(i + 1));
+			result.push_back(line.substr(i + 1));
 			break;
 		}
 		size_t start = i;
-		while (i < len && !std::isspace(static_cast<unsigned char>(input[i])))
+		while (i < len && !std::isspace(static_cast<unsigned char>(line[i])))
 			i++;
-		result.push_back(input.substr(start, i - start));
+		result.push_back(line.substr(start, i - start));
 	}
 	return result;
 }
 
-static std::string toUpper(std::string& s)
+void CommandHandler::parseAndExecute(Client& client, std::string& inbox)
 {
-    for (size_t i = 0; i < s.size(); ++i)
-       s[i] = std::toupper(static_cast<unsigned char>(s[i]));
-    return s;
-}
+	size_t startLine = 0, endLine;
+	std::string line, command;
+	std::vector<std::string> args;
 
-void CommandHandler::processClientBuffer(Client *client , CommandHandler &cmdHandler)
-{
-	std::string &in = client->getIn();
-	size_t pos;
-
-	while (true)
+	endLine = inbox.find("\n");
+	while (endLine != std::string::npos)
 	{
-		pos = in.find("\r\n");
-		if (pos == std::string::npos)
-			pos = in.find('\n'); 
-
-		if (pos == std::string::npos)
-			break;
-
-		std::string line = in.substr(0, pos);
-
-		if (!line.empty() && line[line.size() - 1] == '\r')
-			line.erase(line.size() - 1);
-
-		in.erase(0, pos + ((in[pos] == '\r' && in[pos + 1] == '\n') ? 2 : 1));
-
-		if (line.empty())
-			continue;
-
-		std::cout << "→ Command received: [" << line << "]" << std::endl;
-
-		cmdHandler.handleCommand(client, line);
+		if (endLine - startLine + 1 > _MAX_LINE_LENGTH)
+		{
+			client.setSoftDisconnect("client (fd " + std::to_string(client.getFd()) + "): soft disconnect: line too long", "server: disconnected: line too long");
+			return;
+		}
+		if (endLine > 0 && inbox[endLine - 1] == '\r')
+			line = inbox.substr(startLine, endLine - startLine - 1);
+		else
+			line = inbox.substr(startLine, endLine - startLine);
+		args = split(line);
+		for (size_t i = 0; i < args.size(); ++i)
+			std::cout << "arg[" << i << "]: <" << args[i] << ">" << std::endl;
+		if (!args.empty())
+		{
+			command = toUpper(args[0]);
+			std::map<std::string, CommandFunction>::iterator it = _commands.find(command);
+			if (it != _commands.end())
+				(this->*(it->second))(client, args);
+			else
+			{
+				std::cout << args[0] << ": unknown command" << std::endl;
+				client.send("server: unknown command: " + args[0]);
+			}
+		}
+		startLine = endLine + 1;
+		endLine = inbox.find("\n", startLine);
 	}
+	inbox.erase(0, startLine);
 }
 
 bool CommandHandler::checkRegistered(Client &client)
 {
 	if(!client.isRegistered())
 	{
-		client.sendMessage(":" + _server.getHostname() + " 451 " + client.getNickname() + " :You have not registered");
+		client.send(":" + _server.getHostname() + " 451 " + client.getNickname() + " :You have not registered");
 		return false;
 	}
 	return true;
 }
 
-void CommandHandler::handleCommand(Client *client, std::string line)
+void CommandHandler::ping(Client &client, const std::vector<std::string> &args)
 {
-	std::vector<std::string> args = _split(line);
-
-	for (size_t i = 0; i < args.size(); ++i)
-		std::cout << "Arg " << i << ": [" << args[i] << "]" << std::endl;
-	if (args.empty())
+	if (args.size() < 2)
+	{
+		client.send(":" + _server.getHostname() + " 409 " + client.getNickname() + " :No origin specified");
 		return;
-	std::string cmd = toUpper(args[0]);
-	std::map<std::string, CommandFunction>::iterator it = _commands.find(cmd);
-	if (it != _commands.end())
-		(this->*(it->second))(*client, args);
-	else
-		std::cout << args[0] << " :Unknown command" << std::endl;
+	}
+	client.send("PONG :" + args[1]);
 }
 
 void CommandHandler::cap(Client &client, const std::vector<std::string> &args)
@@ -114,29 +119,28 @@ void CommandHandler::cap(Client &client, const std::vector<std::string> &args)
 	std::cout << "CAP command received" << std::endl;
 	if (args.size() < 2)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 461 CAP :Not enough parameters");
+		client.send(":" + _server.getHostname() + " 461 CAP :Not enough parameters");
 		return;
 	}
 	std::string subcommand = args[1];
 	subcommand = toUpper(subcommand);
 	if (subcommand == "LS")
-		client.sendMessage(":" + _server.getHostname() + " CAP * LS :multi-prefix");
+		client.send(":" + _server.getHostname() + " CAP * LS :multi-prefix");
 	else if (subcommand == "REQ")
 	{
 		std::string requested = (args.size() >= 3 ? args[2] : "");
 		std::string nick = client.getNickname().empty() ? "*" : client.getNickname();
 		if (requested.find("multi-prefix") != std::string::npos)
-			client.sendMessage(":" + _server.getHostname() + " CAP " + nick + " ACK :" + requested);
+			client.send(":" + _server.getHostname() + " CAP " + nick + " ACK :" + requested);
 		else
-			client.sendMessage(":" + _server.getHostname() + " CAP " + nick + " NAK :" + requested);
+			client.send(":" + _server.getHostname() + " CAP " + nick + " NAK :" + requested);
 	}
 	else if (subcommand == "END")
 	{
 		client.tryRegisterClient(_server.getHostname());
 	}
 	else
-		client.sendMessage(":" + _server.getHostname() + " 410 " + client.getNickname() + " " + subcommand + " :Unknown CAP subcommand");
-
+		client.send(":" + _server.getHostname() + " 410 " + client.getNickname() + " " + subcommand + " :Unknown CAP subcommand");
 }
 
 void CommandHandler::pass(Client &client, const std::vector<std::string> &args)
@@ -144,18 +148,18 @@ void CommandHandler::pass(Client &client, const std::vector<std::string> &args)
 	std::cout << "PASS command received" << std::endl;
 	if (client.isRegistered())
 	{
-		client.sendMessage(":" + _server.getHostname() + " 462 " + client.getNickname() + " :You may not reregister");
+		client.send(":" + _server.getHostname() + " 462 " + client.getNickname() + " :You may not reregister");
 		return;
 	}
 	if (args.size() < 2)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 461 PASS :Not enough parameters");
+		client.send(":" + _server.getHostname() + " 461 PASS :Not enough parameters");
 		return;
 	}
-	if (args[1] != client.getServer().getPassword())
+	if (args[1] != _server.getPassword())
 	{
-		client.sendMessage(":" + _server.getHostname() + " 464 :Password incorrect");
-		client.markToDisconnect();
+		client.send(":" + _server.getHostname() + " 464 :Password incorrect");
+		client.setSoftDisconnect();
 		return;
 	}
 	client.setPasswordOk();
@@ -187,25 +191,25 @@ void CommandHandler::nick(Client& client, const std::vector<std::string>& args)
 	std::cout << "NICK command received" << std::endl;
 	if (args.size() < 2)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 431 :No nickname given");
+		client.send(":" + _server.getHostname() + " 431 :No nickname given");
 		return;
 	}
 	std::string new_nick = args[1];
 	if (!isValidNickname(new_nick))
 	{
-		client.sendMessage(":" + _server.getHostname() + " 432 " + new_nick + " :Erroneous nickname");
+		client.send(":" + _server.getHostname() + " 432 " + new_nick + " :Erroneous nickname");
 		return;
 	}
 	if (_server.getClientByNick(new_nick) != nullptr)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 433 " + new_nick + " :Nickname is already in use");
+		client.send(":" + _server.getHostname() + " 433 " + new_nick + " :Nickname is already in use");
 		return;
 	}
 	std::string old_nick = client.getNickname();
 	if (!old_nick.empty())
 		_server.removeClientFromNickMap(old_nick);
 	client.setNickname(new_nick);
-	_server.addClientToNickMap(new_nick, &client);
+	_server.addClientToNickMap(client);
 	client.tryRegisterClient(_server.getHostname());
 	if (!old_nick.empty())
 	{
@@ -219,12 +223,12 @@ void CommandHandler::user(Client& client, const std::vector<std::string>& args)
 	std::cout << "USER command received" << std::endl;
 	if (client.isRegistered())
 	{
-		client.sendMessage(":" + _server.getHostname() + " 462 " + client.getNickname() + " :You may not reregister");
+		client.send(":" + _server.getHostname() + " 462 " + client.getNickname() + " :You may not reregister");
 		return;
 	}
 	if(args.size() < 5)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 461 USER :Not enough parameters");
+		client.send(":" + _server.getHostname() + " 461 USER :Not enough parameters");
 		return;
 	}
 	std::string username = args[1];
@@ -262,7 +266,7 @@ void CommandHandler::join(Client& client, const std::vector<std::string>& args)
 	Server &server = client.getServer();
 	if (args.size() < 2)
 	{
-		client.sendMessage(":" + server.getHostname() + " 461 JOIN :Not enough parameters");
+		client.send(":" + server.getHostname() + " 461 JOIN :Not enough parameters");
 		return;
 	}
 	std::string channel_name = args[1];
@@ -273,7 +277,7 @@ void CommandHandler::join(Client& client, const std::vector<std::string>& args)
 	
 	if (channel_name[0] != '#' && channel_name[0] != '&')
 	{
-		client.sendMessage(":" + server.getHostname() + " 476 " + channel_name + " :Invalid channel name");
+		client.send(":" + server.getHostname() + " 476 " + channel_name + " :Invalid channel name");
 		return;
 	}
 	
@@ -281,38 +285,59 @@ void CommandHandler::join(Client& client, const std::vector<std::string>& args)
 	
 	if (channel->hasMode(INVITE_ONLY) && !channel->isInvited(&client))
 	{
-		client.sendMessage(":" + server.getHostname() + " 473 " + channel_name + " :Cannot join channel (+i)");
+		client.send(":" + server.getHostname() + " 473 " + channel_name + " :Cannot join channel (+i)");
 		return;
 	}
 	
 	if (channel->hasMode(KEY) && channel->getKey() != key)
 	{
-		client.sendMessage(":" + server.getHostname() + " 475 " + channel_name + " :Cannot join channel (+k)");
+		client.send(":" + server.getHostname() + " 475 " + channel_name + " :Cannot join channel (+k)");
 		return;
 	}
-	
-	if (channel->hasMode(LIMIT) && channel->getClients().size() >= channel->getLimit())
+	if (channel->hasMode(LIMIT) && channel->getMembers().size() >= channel->getLimit())
 	{
-		client.sendMessage(":" + server.getHostname() + " 471 " + channel_name + " :Cannot join channel (+l)");
+		client.send(":" + server.getHostname() + " 471 " + channel_name + " :Cannot join channel (+l)");
 		return;
 	}
 	
 	channel->addMember(&client);
 	client.addToChannel(channel_name);
 	channel->removeInvite(&client);
-	
-	if (channel->getClients().size() == 1)
+	if (channel->getMembers().size() == 1)
 		channel->addOperator(&client);
 	
 	std::string join_msg = ":" + client.getPrefix() + " JOIN :" + channel_name;
 	server.notifyClients(channel, join_msg, &client);
 	
 	if (channel->getTopic().empty())
-		client.sendMessage(":" + server.getHostname() + " 331 " + client.getNickname() + " " + channel_name + " :No topic is set");
+		client.send(":" + server.getHostname() + " 331 " + client.getNickname() + " " + channel_name + " :No topic is set");
 	else
-		client.sendMessage(":" + server.getHostname() + " 332 " + client.getNickname() + " " + channel_name + " :" + channel->getTopic());
-	
+		client.send(":" + server.getHostname() + " 332 " + client.getNickname() + " " + channel_name + " :" + channel->getTopic());
+
 	server.sendNamesList(client, channel);
+}
+
+void CommandHandler::join(Client& client, const std::vector<std::string>& args)
+{
+	if (!checkRegistered(client))
+		return;
+
+	std::cout << "JOIN command received" << std::endl;
+
+	if (args.size() < 2)
+	{
+		client.send(":" + _server.getHostname() + " 461 JOIN :Not enough parameters");
+		return;
+	}
+	std::vector<std::string> channels = splitByChar(args[1], ',');
+	std::vector<std::string> keys;
+	if (args.size() >= 3)
+		keys = splitByChar(args[2], ',');
+	for (size_t i = 0; i < channels.size(); ++i)
+	{
+		std::string key = (i < keys.size()) ? keys[i] : "";
+		joinSingleChannel(client, channels[i], key, _server);
+	}
 }
 
 void CommandHandler::ping(Client &client, const std::vector<std::string> &args)
@@ -320,10 +345,10 @@ void CommandHandler::ping(Client &client, const std::vector<std::string> &args)
 	std::cout << "PING command received" << std::endl;
 	if (args.size() < 2)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 409 " + client.getNickname() + " :No origin specified");
+		client.send(":" + _server.getHostname() + " 409 " + client.getNickname() + " :No origin specified");
 		return;
 	}
-	client.sendMessage("PONG :" + args[1]);
+	client.send("PONG :" + args[1]);
 }
 
 static void partSingleChannel(Client &client, const std::string &channel_name, Server &server)
@@ -331,13 +356,13 @@ static void partSingleChannel(Client &client, const std::string &channel_name, S
 	Channel* channel = server.getChannel(channel_name);
 	if (!channel)
 	{
-		client.sendMessage(":" + server.getHostname() + " 403 " + channel_name + " :No such channel");
+		client.send(":" + server.getHostname() + " 403 " + channel_name + " :No such channel");
 		return;
 	}
 
 	if (!channel->isMember(&client))
 	{
-		client.sendMessage(":" + server.getHostname() + " 442 " + channel_name + " :You're not on that channel");
+		client.send(":" + server.getHostname() + " 442 " + channel_name + " :You're not on that channel");
 		return;
 	}
 
@@ -348,14 +373,14 @@ static void partSingleChannel(Client &client, const std::string &channel_name, S
 
 	std::string part_msg = ":" + client.getPrefix() + " PART :" + channel_name;
 	server.notifyClients(channel, part_msg, &client);
-	if (!channel->getClients().empty() && channel->getOperators().empty())
+	if (!channel->getMembers().empty() && channel->getOperators().empty())
 	{
-		Client *new_op = *(channel->getClients().begin());	
+		Client *new_op = *(channel->getMembers().begin());
 		channel->addOperator(new_op);
 		std::string op_msg = ":" + new_op->getPrefix() + " MODE " + channel->getName() + " +o " + new_op->getNickname();
     	server.notifyClients(channel, op_msg, nullptr);
 	}
-	if (channel->getClients().empty())
+	if (channel->getMembers().empty())
 		server.deleteChannel(channel_name);
 }
 
@@ -366,7 +391,7 @@ void CommandHandler::part(Client& client, const std::vector<std::string>& args)
 	std::cout << "PART command received" << std::endl;
 	if (args.size() < 2)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 461 PART :Not enough parameters");
+		client.send(":" + _server.getHostname() + " 461 PART :Not enough parameters");
 		return;
 	}
 	std::vector<std::string> channels = splitByChar(args[1], ',');
@@ -589,7 +614,7 @@ void CommandHandler::privmsg(Client& client, const std::vector<std::string>& arg
 	std::cout << "PRIVMSG command received" << std::endl;
 	if (args.size() < 3)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 461 PRIVMSG :Not enough parameters");
+		client.send(":" + _server.getHostname() + " 461 PRIVMSG :Not enough parameters");
 		return;
 	}
 	std::string target = args[1];
@@ -599,13 +624,13 @@ void CommandHandler::privmsg(Client& client, const std::vector<std::string>& arg
 		Channel* channel = _server.getChannel(target);
 		if (!channel)
 		{
-			client.sendMessage(":" + _server.getHostname() + " 403 " + target + " :No such channel");
+			client.send(":" + _server.getHostname() + " 403 " + target + " :No such channel");
 			return;
 		}
 	
 		if (!channel->isMember(&client))
 		{
-			client.sendMessage(":" + _server.getHostname() + " 404 " + target + " :Cannot send to channel");
+			client.send(":" + _server.getHostname() + " 404 " + target + " :Cannot send to channel");
 			return;
 		}
 		std::string msg = ":" + client.getPrefix() + " PRIVMSG " + target + " :" + message;
@@ -616,11 +641,11 @@ void CommandHandler::privmsg(Client& client, const std::vector<std::string>& arg
 		Client* target_client = _server.getClientByNick(target);
 		if (!target_client)
 		{
-			client.sendMessage(":" + _server.getHostname() + " 401 " + target + " :No such nick");
+			client.send(":" + _server.getHostname() + " 401 " + target + " :No such nick");
 			return;
 		}
 		std::string msg = ":" + client.getPrefix() + " PRIVMSG " + target + " :" + message;
-		target_client->sendMessage(msg);
+		target_client->send(msg);
 	}
 }
 
@@ -631,7 +656,7 @@ void CommandHandler::invite(Client& client, const std::vector<std::string>& args
 	std::cout << "INVITE command received" << std::endl;
 	if (args.size() < 3)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 461 INVITE :Not enough parameters");
+		client.send(":" + _server.getHostname() + " 461 INVITE :Not enough parameters");
 		return;
 	}
 	std::string target_nick = args[1];
@@ -639,32 +664,32 @@ void CommandHandler::invite(Client& client, const std::vector<std::string>& args
 	Channel* channel = _server.getChannel(channel_name);
 	if (!channel)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 403 " + channel_name + " :No such channel");
+		client.send(":" + _server.getHostname() + " 403 " + channel_name + " :No such channel");
 		return;
 	}
 	if (!channel->isMember(&client))
 	{
-		client.sendMessage(":" + _server.getHostname() + " 442 " + channel_name + " :You're not on that channel");
+		client.send(":" + _server.getHostname() + " 442 " + channel_name + " :You're not on that channel");
 		return;
 	}
 	if (channel->hasMode(INVITE_ONLY) && !channel->isOperator(&client))
 	{
-		client.sendMessage(":" + _server.getHostname() + " 482 " + channel_name + " :You're not channel operator");
+		client.send(":" + _server.getHostname() + " 482 " + channel_name + " :You're not channel operator");
 		return;
 	}
 	Client* target_client = _server.getClientByNick(target_nick);
 	if (!target_client)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 401 " + target_nick + " :No such nick");
+		client.send(":" + _server.getHostname() + " 401 " + target_nick + " :No such nick");
 		return;
 	}
 	if (channel->isMember(target_client))
 	{
-		client.sendMessage(":" + _server.getHostname() + " 443 " + target_nick + " " + channel_name + " :is already on that channel");
+		client.send(":" + _server.getHostname() + " 443 " + target_nick + " " + channel_name + " :is already on that channel");
 		return;
 	}
 	channel->invite(target_client);
-	target_client->sendMessage(":" + client.getPrefix() + " INVITE " + target_nick + " :" + channel_name);
+	target_client->send(":" + client.getPrefix() + " INVITE " + target_nick + " :" + channel_name);
 	std::string msg = ":" + client.getPrefix() + " INVITE " + target_nick + " :" + channel_name;
 	_server.notifyClients(channel, msg, &client);
 }
@@ -676,7 +701,7 @@ void CommandHandler::kick(Client& client, const std::vector<std::string>& args)
 	std::cout << "KICK command received" << std::endl;
 	if (args.size() < 3)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 461 KICK :Not enough parameters");
+		client.send(":" + _server.getHostname() + " 461 KICK :Not enough parameters");
 		return;
 	}
 	std::string target_nick = args[1];
@@ -688,17 +713,17 @@ void CommandHandler::kick(Client& client, const std::vector<std::string>& args)
 	Channel* channel = _server.getChannel(channel_name);
 	if (!channel)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 403 " + channel_name + " :No such channel");
+		client.send(":" + _server.getHostname() + " 403 " + channel_name + " :No such channel");
 		return;
 	}
 	if (!channel->isMember(&client))
 	{
-		client.sendMessage(":" + _server.getHostname() + " 442 " + channel_name + " :You're not on that channel");
+		client.send(":" + _server.getHostname() + " 442 " + channel_name + " :You're not on that channel");
 		return;
 	}
 	if (!channel->isOperator(&client))
 	{
-		client.sendMessage(":" + _server.getHostname() + " 482 " + channel_name + " :You're not channel operator");
+		client.send(":" + _server.getHostname() + " 482 " + channel_name + " :You're not channel operator");
 		return;
 	}
 	Client* target_client = _server.getClientByNick(target_nick);
@@ -725,32 +750,32 @@ void CommandHandler::topic(Client& client, const std::vector<std::string>& args)
 	std::cout << "TOPIC command received" << std::endl;
 	if (args.size() < 2)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 461 TOPIC :Not enough parameters");
+		client.send(":" + _server.getHostname() + " 461 TOPIC :Not enough parameters");
 		return;
 	}
 	std::string channel_name = args[1];
 	Channel* channel = _server.getChannel(channel_name);
 	if (!channel)
 	{
-		client.sendMessage(":" + _server.getHostname() + " 403 " + channel_name + " :No such channel");
+		client.send(":" + _server.getHostname() + " 403 " + channel_name + " :No such channel");
 		return;
 	}
 	if (!channel->isMember(&client))
 	{
-		client.sendMessage(":" + _server.getHostname() + " 442 " + channel_name + " :You're not on that channel");
+		client.send(":" + _server.getHostname() + " 442 " + channel_name + " :You're not on that channel");
 		return;
 	}
 	if (args.size() == 2)
 	{
 		if (channel->getTopic().empty())
-			client.sendMessage(":" + _server.getHostname() + " 331 " + client.getNickname() + " " + channel_name + " :No topic is set");
+			client.send(":" + _server.getHostname() + " 331 " + client.getNickname() + " " + channel_name + " :No topic is set");
 		else
-			client.sendMessage(":" + _server.getHostname() + " 332 " + client.getNickname() + " " + channel_name + " :" + channel->getTopic());
+			client.send(":" + _server.getHostname() + " 332 " + client.getNickname() + " " + channel_name + " :" + channel->getTopic());
 		return;
 	}
 	if (channel->hasMode(PROTECTED_TOPIC) && !channel->isOperator(&client))
 	{
-		client.sendMessage(":" + _server.getHostname() + " 482 " + channel_name + " :You're not channel operator");
+		client.send(":" + _server.getHostname() + " 482 " + channel_name + " :You're not channel operator");
 		return;
 	}
 	std::string new_topic = args[2];
