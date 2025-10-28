@@ -18,7 +18,7 @@ private:
 	std::string _hostname;
 	int _server_fd;
 	std::vector<Client*> _clients;
-	std::vector<struct pollfd> _pollArray;
+	std::vector<struct pollfd*> _pollArray;
 	std::map<std::string, Client*> _clientsByNick;
 	std::map<std::string, Channel*> _channels;
 	CommandHandler _cmdHandler;
