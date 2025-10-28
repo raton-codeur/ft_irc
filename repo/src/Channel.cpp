@@ -51,6 +51,29 @@ bool Channel::hasMode(int flag) const
 	return (_mode & flag);
 }
 
+std::string Channel::getModesAsString() const
+{
+	std::string mode_flags = "+";
+	std::string mode_args;
+
+	if (hasMode(INVITE_ONLY))
+		mode_flags += "i";
+	if (hasMode(PROTECTED_TOPIC))
+		mode_flags += "t";
+	if (hasMode(KEY))
+	{
+		mode_flags += "k";
+		mode_args += " " + _key;
+	}
+	if (hasMode(LIMIT))
+	{
+		mode_flags += "l";
+		mode_args += " " + std::to_string(_limit);
+	}
+
+	return mode_flags + " " + mode_args;
+}
+
 void Channel::setTopic(const std::string &topic)
 {
 	_topic = topic;

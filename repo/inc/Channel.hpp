@@ -44,6 +44,7 @@ public:
 	void setMode(int flag);
 	void unsetMode(int flag);
 	bool hasMode(int flag) const;
+	std::string getModesAsString() const;
 
 	const std::string& getTopic() const;
 	void setTopic(const std::string &topic);

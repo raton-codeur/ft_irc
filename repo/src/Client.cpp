@@ -1,6 +1,6 @@
 #include "Client.hpp"
 
-Client::Client(Server& server, int fd) : _server(server), _fd(fd), _hostname("localhost"), _registered(false), _password_ok(false), _to_disconnect(false), _welcome_sent(false)
+Client::Client(Server& server, int fd) : _server(server), _fd(fd), _hostname("localhost"), _registered(false), _password_ok(false), _to_disconnect(false)
 {
 	std::cout << "new client (fd " << fd << ")" << std::endl;
 }
@@ -120,19 +120,26 @@ const std::set<std::string> &Client::getChannels() const
 	return _channels;
 }
 
-bool Client::isReadyforWelcome() const
+void Client::tryRegisterClient(const std::string& hostname)
 {
-	return (!isRegistered() && hasUsername() && !getNickname().empty() && isPasswordOk());
+	if (_registered || !_password_ok || _nickname.empty() || _username.empty())
+		return;
+	_registered = true;
+	sendWelcome(hostname);
 }
 
 void Client::sendWelcome(const std::string &hostname)
 {
-	if (isReadyforWelcome() && !hasWelcomeBeenSent())
-	{
-		setRegistered();
-		sendMessage(":" + hostname + " 001 " + getNickname() + " :Welcome to the IRC network " + hostname);
-		markWelcomeSent();
-	}
+
+	std::string nick = _nickname.empty() ? "*" : _nickname;
+
+	sendMessage(":" + hostname + " 001 " + nick + " :Welcome to the IRC network " + hostname);
+	sendMessage(":" + hostname + " 002 " + nick + " :Your host is " + hostname);
+	sendMessage(":" + hostname + " 003 " + nick + " :This server was created just now");
+	sendMessage(":" + hostname + " 004 " + nick + " " + hostname + " 1.0 i o t k l");
+	sendMessage(":" + hostname + " 375 " + nick + " :- " + hostname + " Message of the day - ");
+	sendMessage(":" + hostname + " 372 " + nick + " :- Vive les crepes!");
+	sendMessage(":" + hostname + " 376 " + nick + " :End of /MOTD command.");
 }
 
 void Client::sendMessage(const std::string &message) const
@@ -142,12 +149,3 @@ void Client::sendMessage(const std::string &message) const
 		std::cerr << "Failed to send message to client fd " << _fd << std::endl;
 }
 
-bool Client::hasWelcomeBeenSent() const
-{
-	return _welcome_sent;
-}
-
-void Client::markWelcomeSent()
-{
-	_welcome_sent = true;
-}
