@@ -16,7 +16,7 @@ private:
 	// attributes
 	Server& _server;
 	const int _fd;
-	short& _pollEvents;
+	size_t _i;
 	std::string _inbox;
 	char _bufferRecv[_BUFFER_RECV_SIZE];
 	std::deque<std::string> _outbox;
@@ -32,11 +32,6 @@ private:
 	std::string _disconnectLog;
 	std::set<std::string> _channels;
 
-	// utils
-	void removePOLLIN();
-	void removePOLLOUT();
-	void addPOLLOUT();
-
 	// disabled
 	Client();
 	Client(const Client&);
@@ -45,11 +40,12 @@ private:
 public:
 
 	// constructor, destructor
-	Client(Server& server, int fd, short& pollEvents);
+	Client(Server& server, int fd, size_t i);
 	~Client();
 
 	// get, set
 	int getFd() const;
+	void setI(size_t i);
 	const std::string& getNickname() const;
 	void setNickname(const std::string& nickname);
 	const std::string& getUsername() const;

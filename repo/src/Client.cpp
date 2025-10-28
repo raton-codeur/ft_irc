@@ -1,7 +1,8 @@
+#include "Server.hpp"
 #include "Client.hpp"
 #include "CommandHandler.hpp"
 
-Client::Client(Server& server, int fd, short& pollEvents) : _server(server), _fd(fd), _pollEvents(pollEvents), _outboxOffset(0), _hostname("localhost"), _registered(false), _passwordOk(false), _softDisconnect(false), _hardDisconnect(false)
+Client::Client(Server& server, int fd, size_t i) : _server(server), _fd(fd), _i(i), _outboxOffset(0), _hostname("localhost"), _registered(false), _passwordOk(false), _softDisconnect(false), _hardDisconnect(false)
 {
 	std::cout << "new client (fd " << fd << ")" << std::endl;
 }
@@ -15,6 +16,11 @@ Client::~Client()
 int Client::getFd() const
 {
 	return _fd;
+}
+
+void Client::setI(size_t i)
+{
+	_i = i;
 }
 
 const std::string& Client::getNickname() const
@@ -122,7 +128,7 @@ void Client::setSoftDisconnect(const std::string& logServer, const std::string& 
 	_disconnectLog = logServer;
 	if (!logClient.empty())
 		send(logClient);
-	removePOLLIN();
+	_server.removePOLLIN(_i);
 }
 
 void Client::setHardDisconnect(const std::string& logServer)
@@ -142,25 +148,10 @@ void Client::printDisconnectLog() const
 		std::cout << _disconnectLog << std::endl;
 }
 
-void Client::removePOLLIN()
-{
-	_pollEvents &= ~POLLIN;
-}
-
-void Client::removePOLLOUT()
-{
-	_pollEvents &= ~POLLOUT;
-}
-
-void Client::addPOLLOUT()
-{
-	_pollEvents |= POLLOUT;
-}
-
 void Client::send(const std::string& message)
 {
 	_outbox.push_back(message + "\r\n");
-	addPOLLOUT();
+	_server.addPOLLOUT(_i);
 }
 
 void Client::handlePOLLIN(CommandHandler& cmdHandler)
@@ -252,5 +243,5 @@ void Client::handlePOLLOUT()
 			return;
 		}
 	}
-	removePOLLOUT();
+	_server.removePOLLOUT(_i);
 }

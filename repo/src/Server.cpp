@@ -54,10 +54,10 @@ Server::Server(int argc, char** argv) : _hostname("irc.qhauuy-jteste.local"), _c
 		perrorAndThrow("listen");
 	std::cout << "server is listening on port " << _port << "..." << std::endl;
 
-	struct pollfd* p = new struct pollfd;
-	p->fd = _server_fd;
-	p->events = POLLIN;
-	p->revents = 0;
+	struct pollfd p;
+	p.fd = _server_fd;
+	p.events = POLLIN;
+	p.revents = 0;
 	_pollArray.push_back(p);
 
 	_clients.push_back(nullptr);
@@ -68,19 +68,17 @@ Server::~Server()
 	if (_server_fd != -1)
 	{
 		close(_server_fd);
-		std::cout << "server : fd has been closed" << std::endl;
+		std::cout << "server fd: closed" << std::endl;
 	}
 	for (size_t i = 1; i < _clients.size(); ++i)
 		delete _clients[i];
-	for (size_t i = 0; i < _pollArray.size(); ++i)
-		delete _pollArray[i];
 	for (std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
 		delete it->second;
 }
 
 void Server::run()
 {
-	if (poll(_pollArray[0], _pollArray.size(), -1) == -1)
+	if (poll(_pollArray.data(), _pollArray.size(), -1) == -1)
 	{
 		if (errno == EINTR)
 			return;
@@ -94,22 +92,22 @@ void Server::run()
 
 void Server::addClient(int client_fd)
 {
-	struct pollfd* p = new struct pollfd;
-	p->fd = client_fd;
-	p->events = POLLIN;
-	p->revents = 0;
+	struct pollfd p;
+	p.fd = client_fd;
+	p.events = POLLIN;
+	p.revents = 0;
 	_pollArray.push_back(p);
 
-	_clients.push_back(new Client(*this, client_fd, p->events));
+	_clients.push_back(new Client(*this, client_fd, _clients.size()));
 }
 
 void Server::acceptClients()
 {
 	int client_fd;
 
-	if (_pollArray[0]->revents & (POLLHUP | POLLERR | POLLNVAL))
+	if (_pollArray[0].revents & (POLLHUP | POLLERR | POLLNVAL))
 		errorAndThrow("server socket error");
-	if (_pollArray[0]->revents & POLLIN)
+	if (_pollArray[0].revents & POLLIN)
 	{
 		while (true)
 		{
@@ -134,21 +132,21 @@ void Server::handleClientEvents()
 {
 	for (size_t i = 1; i < _pollArray.size(); ++i)
 	{
-		if (_pollArray[i]->revents)
+		if (_pollArray[i].revents)
 		{
-			if (_pollArray[i]->revents & (POLLHUP | POLLERR | POLLNVAL))
+			if (_pollArray[i].revents & (POLLHUP | POLLERR | POLLNVAL))
 			{
-				if (_pollArray[i]->revents & POLLNVAL)
+				if (_pollArray[i].revents & POLLNVAL)
 					_clients[i]->setHardDisconnect("client (fd " + std::to_string(_clients[i]->getFd()) + "): hard disconnect: invalid fd");
-				else if (_pollArray[i]->revents & POLLERR)
+				else if (_pollArray[i].revents & POLLERR)
 					_clients[i]->setHardDisconnect("client (fd " + std::to_string(_clients[i]->getFd()) + "): hard disconnect: network error");
 				else
 					_clients[i]->setHardDisconnect("client (fd " + std::to_string(_clients[i]->getFd()) + "): hard disconnect: disconnected");
 				continue;
 			}
-			if (_pollArray[i]->revents & POLLIN)
+			if (_pollArray[i].revents & POLLIN)
 				_clients[i]->handlePOLLIN(_cmdHandler);
-			if (_pollArray[i]->revents & POLLOUT && !_clients[i]->isHardDisconnect())
+			if (_pollArray[i].revents & POLLOUT && !_clients[i]->isHardDisconnect())
 				_clients[i]->handlePOLLOUT();
 		}
 	}
@@ -158,8 +156,8 @@ void Server::deleteClient(size_t i)
 {
 	removeClientFromNickMap(_clients[i]->getNickname());
 	delete _clients[i];
-	delete _pollArray[i];
 	_clients[i] = _clients.back();
+	_clients[i]->setI(i);
 	_clients.pop_back();
 	_pollArray[i] = _pollArray.back();
 	_pollArray.pop_back();
@@ -236,6 +234,21 @@ void Server::deleteChannel(const std::string& name)
 		_channels.erase(it);
 		std::cout << "channel " << name << ": deleted (empty)" << std::endl;
 	}
+}
+
+void Server::removePOLLIN(size_t i)
+{
+	_pollArray[i].events &= ~POLLIN;
+}
+
+void Server::removePOLLOUT(size_t i)
+{
+	_pollArray[i].events &= ~POLLOUT;
+}
+
+void Server::addPOLLOUT(size_t i)
+{
+	_pollArray[i].events |= POLLOUT;
 }
 
 void Server::notifyClients(const std::set<std::string>& channels, const std::string& message, Client* exclude = NULL)
