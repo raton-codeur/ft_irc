@@ -30,7 +30,7 @@ fclean : clean
 re : fclean all
 
 test : re
-	./$(NAME) 6667 mypassword
+	./$(NAME) 6667 okok
 
 nc :
 	nc 127.0.0.1 6667
@@ -38,4 +38,8 @@ nc :
 d :
 	docker run --rm -it -v "$$PWD":/repo -w /repo -p 6667:6667 gcc
 
-.PHONY: all clean fclean re test nc d
+i :
+	@ nick=$$(LC_ALL=C tr -dc 'a-z' < /dev/urandom | head -c 3); LC_ALL=C sed -i "" "5s/.*/    nick = $${nick};/" irssi.config
+	irssi --config irssi.config
+
+.PHONY: all clean fclean re test nc d i

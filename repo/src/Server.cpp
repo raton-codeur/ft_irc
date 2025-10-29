@@ -2,26 +2,16 @@
 #include "Client.hpp"
 #include "Channel.hpp"
 
-static bool has_white_spaces(const std::string& str)
-{
-	for (size_t i = 0; i < str.size(); ++i)
-	{
-		if (std::isspace(static_cast<unsigned char>(str[i])))
-			return true;
-	}
-	return false;
-}
-
 static void checkArgs(int argc, char** argv)
 {
 	if (argc != 3)
-		errorAndThrow("Usage: ./ircserv <port> <password>");
+		errorAndThrow("usage: ./ircserv <port> <password>");
 	char* end;
 	long port = std::strtol(argv[1], &end, 10);
 	if (*end != '\0' || port < 1024 || port > 65535)
-		errorAndThrow("Error: invalid port number (must be an integer between 1024 and 65535)");
-	if (std::strlen(argv[2]) == 0 || std::strlen(argv[2]) > 32 || has_white_spaces(argv[2]))
-		errorAndThrow("Error: invalid password (must be 1-32 characters long, no whitespaces)");
+		errorAndThrow("error: invalid port number (must be an integer between 1024 and 65535)");
+	if (!isValidPassword(argv[2]))
+		errorAndThrow("error: invalid password (must be 1-32 characters long, no whitespaces)");
 }
 
 Server::Server(int argc, char** argv) : _hostname("irc.qhauuy-jteste.local"), _cmdHandler(*this)
@@ -60,7 +50,7 @@ Server::Server(int argc, char** argv) : _hostname("irc.qhauuy-jteste.local"), _c
 	p.revents = 0;
 	_pollArray.push_back(p);
 
-	_clients.push_back(nullptr);
+	_clients.push_back(NULL);
 }
 
 Server::~Server()
@@ -137,11 +127,11 @@ void Server::handleClientEvents()
 			if (_pollArray[i].revents & (POLLHUP | POLLERR | POLLNVAL))
 			{
 				if (_pollArray[i].revents & POLLNVAL)
-					_clients[i]->setHardDisconnect("client (fd " + std::to_string(_clients[i]->getFd()) + "): hard disconnect: invalid fd");
+					_clients[i]->setHardDisconnect("client (fd " + std::to_string(_clients[i]->getFd()) + ", i " + std::to_string(i) + "): hard disconnect: invalid fd");
 				else if (_pollArray[i].revents & POLLERR)
-					_clients[i]->setHardDisconnect("client (fd " + std::to_string(_clients[i]->getFd()) + "): hard disconnect: network error");
+					_clients[i]->setHardDisconnect("client (fd " + std::to_string(_clients[i]->getFd()) + ", i " + std::to_string(i) + "): hard disconnect: network error");
 				else
-					_clients[i]->setHardDisconnect("client (fd " + std::to_string(_clients[i]->getFd()) + "): hard disconnect: disconnected");
+					_clients[i]->setHardDisconnect("client (fd " + std::to_string(_clients[i]->getFd()) + ", i " + std::to_string(i) + "): hard disconnect: disconnected");
 				continue;
 			}
 			if (_pollArray[i].revents & POLLIN)
@@ -257,31 +247,36 @@ void Server::addPOLLOUT(size_t i)
 	_pollArray[i].events |= POLLOUT;
 }
 
-void Server::notifyClients(const std::set<std::string>& channels, const std::string& message, Client* exclude = NULL)
+void Server::notifyChannelMembers(Channel* channel, const std::string& message, Client* exclude = NULL)
 {
-	for (std::set<std::string>::const_iterator it = channels.begin(); it != channels.end(); ++it)
-	{
-		Channel *chan = getChannel(*it);
-		if (!chan) continue;
+	if (!channel || message.empty())
+		return;
 
-		const std::set<Client*> &members = chan->getMembers();
-		for (std::set<Client*>::const_iterator mit = members.begin(); mit != members.end(); ++mit)
+	const std::set<Client*>& members = channel->getMembers();
+	for (std::set<Client*>::const_iterator it = members.begin(); it != members.end(); ++it)
 		{
-			if (*mit != exclude)
-				(*mit)->send(message);
-		}
+		if (*it && *it != exclude)
+			(*it)->send(message);
 	}
 }
 
-void Server::notifyClients(Channel *channel, const std::string &message, Client *exclude)
+void Server::notifyChannelMembers(const std::set<std::string>& channels, const std::string& message, Client* exclude = NULL)
 {
-	if (!channel)
-		return;
+	Channel* channel;
+	std::set<Client*> targets;
 
-	const std::set<Client*> &members = channel->getMembers();
-	for (std::set<Client*>::const_iterator it = members.begin(); it != members.end(); ++it)
+	if (message.empty())
+		return;
+	for (std::set<std::string>::const_iterator it = channels.begin(); it != channels.end(); ++it)
 	{
-		if (*it != exclude)
+		channel = getChannel(*it);
+		if (!channel)
+			continue;
+		targets.insert(channel->getMembers().begin(), channel->getMembers().end());
+	}
+	for (std::set<Client*>::const_iterator it = targets.begin(); it != targets.end(); ++it)
+	{
+		if (*it && *it != exclude)
 			(*it)->send(message);
 	}
 }

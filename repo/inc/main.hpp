@@ -30,3 +30,4 @@ void checkSignals();
 // utils.cpp
 void perrorAndThrow(const char* message);
 void errorAndThrow(const char* message);
+bool isValidPassword(const std::string& password);

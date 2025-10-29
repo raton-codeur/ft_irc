@@ -62,7 +62,7 @@ public:
 	void addPOLLOUT(size_t i);
 
 	// others
-	void notifyClients(const std::set<std::string>& channels, const std::string& message, Client* exclude);
-	void notifyClients(Channel* channel, const std::string& message, Client* exclude);
+	void notifyChannelMembers(Channel* channel, const std::string& message, Client* exclude);
+	void notifyChannelMembers(const std::set<std::string>& channels, const std::string& message, Client* exclude);
 	void sendNamesList(Client& client, Channel* channel);
 };

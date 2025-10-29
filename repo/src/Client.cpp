@@ -2,9 +2,9 @@
 #include "Client.hpp"
 #include "CommandHandler.hpp"
 
-Client::Client(Server& server, int fd, size_t i) : _server(server), _fd(fd), _i(i), _outboxOffset(0), _hostname("localhost"), _registered(false), _passwordOk(false), _softDisconnect(false), _hardDisconnect(false)
+Client::Client(Server& server, int fd, size_t i) : _server(server), _fd(fd), _i(i), _outboxOffset(0), _hostname("localhost"), _passwordOk(false), _registered(false), _softDisconnect(false), _hardDisconnect(false)
 {
-	std::cout << "new client (fd " << fd << ")" << std::endl;
+	std::cout << "new client (fd " << fd << ", id " << i << ")" << std::endl;
 }
 
 Client::~Client()
@@ -16,6 +16,11 @@ Client::~Client()
 int Client::getFd() const
 {
 	return _fd;
+}
+
+size_t Client::getI() const
+{
+	return _i;
 }
 
 void Client::setI(size_t i)
@@ -67,16 +72,6 @@ std::string Client::getPrefix() const
 	return ":" + _nickname + "!" + _username + "@" + _hostname;
 }
 
-bool Client::isRegistered() const
-{
-	return _registered;
-}
-
-void Client::setRegistered()
-{
-	_registered = true;
-}
-
 bool Client::isPasswordOk() const
 {
 	return _passwordOk;
@@ -87,9 +82,34 @@ void Client::setPasswordOk()
 	_passwordOk = true;
 }
 
-Server &Client::getServer()
+bool Client::isRegistered() const
 {
-	return _server;
+	return _registered;
+}
+
+void Client::setRegistered()
+{
+	_registered = true;
+}
+
+void Client::sendWelcome()
+{
+	std::string nick = _nickname.empty() ? "*" : _nickname;
+	send(":" + _server.getHostname() + " 001 " + nick + " :Welcome to the IRC network " + _server.getHostname());
+	send(":" + _server.getHostname() + " 002 " + nick + " :Your host is " + _server.getHostname());
+	send(":" + _server.getHostname() + " 003 " + nick + " :This server was created just now");
+	send(":" + _server.getHostname() + " 004 " + nick + " " + _server.getHostname() + " 1.0 i o t k l");
+	send(":" + _server.getHostname() + " 375 " + nick + " :- " + _server.getHostname() + " Message of the day - ");
+	send(":" + _server.getHostname() + " 372 " + nick + " :- Vive les crepes!");
+	send(":" + _server.getHostname() + " 376 " + nick + " :End of /MOTD command.");
+}
+
+void Client::tryRegisterClient()
+{
+	if (_registered || !_passwordOk || _nickname.empty() || _username.empty())
+		return;
+	_registered = true;
+	sendWelcome();
 }
 
 const std::set<std::string>& Client::getChannels() const
@@ -171,7 +191,7 @@ void Client::handlePOLLIN(CommandHandler& cmdHandler)
 		}
 		else if (n == 0)
 		{
-			setHardDisconnect("client (fd " + std::to_string(_fd) + "): hard disconnect: disconnected");
+			setHardDisconnect("client (fd " + std::to_string(_fd) + ", i" + std::to_string(_i) + "): hard disconnect: disconnected");
 			return;
 		}
 		else if (errno == EINTR)
@@ -180,33 +200,11 @@ void Client::handlePOLLIN(CommandHandler& cmdHandler)
 			break;
 		else
 		{
-			setHardDisconnect("client (fd " + std::to_string(_fd) + "): hard disconnect: recv error");
+			setHardDisconnect("client (fd " + std::to_string(_fd) + ", i" + std::to_string(_i) + "): hard disconnect: recv error");
 			return;
 		}
 	}
 	cmdHandler.parseAndExecute(*this, _inbox);
-}
-
-void Client::tryRegisterClient(const std::string& hostname)
-{
-	if (_registered || !_passwordOk || _nickname.empty() || _username.empty())
-		return;
-	_registered = true;
-	sendWelcome(hostname);
-}
-
-void Client::sendWelcome(const std::string &hostname)
-{
-
-	std::string nick = _nickname.empty() ? "*" : _nickname;
-
-	send(":" + hostname + " 001 " + nick + " :Welcome to the IRC network " + hostname);
-	send(":" + hostname + " 002 " + nick + " :Your host is " + hostname);
-	send(":" + hostname + " 003 " + nick + " :This server was created just now");
-	send(":" + hostname + " 004 " + nick + " " + hostname + " 1.0 i o t k l");
-	send(":" + hostname + " 375 " + nick + " :- " + hostname + " Message of the day - ");
-	send(":" + hostname + " 372 " + nick + " :- Vive les crepes!");
-	send(":" + hostname + " 376 " + nick + " :End of /MOTD command.");
 }
 
 void Client::handlePOLLOUT()
@@ -239,7 +237,7 @@ void Client::handlePOLLOUT()
 			return;
 		else
 		{
-			setHardDisconnect("client (fd " + std::to_string(_fd) + "): hard disconnect: send error");
+			setHardDisconnect("client (fd " + std::to_string(_fd) + ", i" + std::to_string(_i) + "): hard disconnect: send error");
 			return;
 		}
 	}

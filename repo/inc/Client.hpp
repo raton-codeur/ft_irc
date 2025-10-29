@@ -25,12 +25,15 @@ private:
 	std::string _username;
 	std::string _realname;
 	std::string _hostname;
-	bool _registered;
 	bool _passwordOk;
+	bool _registered;
 	bool _softDisconnect;
 	bool _hardDisconnect;
 	std::string _disconnectLog;
 	std::set<std::string> _channels;
+
+	// others
+	void sendWelcome();
 
 	// disabled
 	Client();
@@ -45,6 +48,7 @@ public:
 
 	// get, set
 	int getFd() const;
+	size_t getI() const;
 	void setI(size_t i);
 	const std::string& getNickname() const;
 	void setNickname(const std::string& nickname);
@@ -56,14 +60,12 @@ public:
 	std::string getHostname() const;
 	std::string getPrefix() const;
 
-	// get, set <-> init
-	bool isRegistered() const;
-	void setRegistered();
+	// <-> init
 	bool isPasswordOk() const;
 	void setPasswordOk();
-	Server& getServer();
-	void tryRegisterClient(const std::string& hostname);
-	void sendWelcome(const std::string& hostname);
+	bool isRegistered() const;
+	void setRegistered();
+	void tryRegisterClient();
 
 	// <-> channels
 	const std::set<std::string>& getChannels() const;
