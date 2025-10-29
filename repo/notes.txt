@@ -1,0 +1,8 @@
+
+
+
+
+-
+à faire
+
+revoir le delete client dans le serveur pour supprimer le client des channels 
