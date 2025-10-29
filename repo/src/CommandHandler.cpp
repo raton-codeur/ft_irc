@@ -224,9 +224,9 @@ void CommandHandler::user(Client& client, const std::vector<std::string>& args)
 	std::string username = args[1];
 	std::string realname;
 	if (!args[4].empty() && args[4][0] == ':')
-		realname = args[4].substr(1);
+	realname = args[4].substr(1);
 	else
-		realname = args[4];
+	realname = args[4];
 	client.setUsername(username);
 	client.setRealname(realname);
 	client.tryRegisterClient(_server.getHostname());
@@ -237,13 +237,47 @@ static std::vector<std::string> splitByChar(const std::string& str, char delim)
 	std::vector<std::string> result;
 	std::string token;
 	std::istringstream ss(str);
-
+	
 	while (std::getline(ss, token, delim))
 	{
 		if (!token.empty())
-			result.push_back(token);
+		result.push_back(token);
 	}
 	return result;
+}
+
+static void partSingleChannel(Client &client, const std::string &channel_name, Server &server)
+{
+	Channel* channel = server.getChannel(channel_name);
+	if (!channel)
+	{
+		client.send(":" + server.getHostname() + " 403 " + channel_name + " :No such channel");
+		return;
+	}
+
+	if (!channel->isMember(&client))
+	{
+		client.send(":" + server.getHostname() + " 442 " + channel_name + " :You're not on that channel");
+		return;
+	}
+
+	std::string part_msg = ":" + client.getPrefix() + " PART :" + channel_name;
+	server.notifyClients(channel, part_msg, nullptr);
+
+	channel->removeMember(&client);
+	if (channel->isOperator(&client))
+		channel->removeOperator(&client);
+	client.removeFromChannel(channel_name);
+
+	if (!channel->getMembers().empty() && channel->getOperators().empty())
+	{
+		Client *new_op = *(channel->getMembers().begin());
+		channel->addOperator(new_op);
+		std::string op_msg = ":" + new_op->getPrefix() + " MODE " + channel->getName() + " +o " + new_op->getNickname();
+		server.notifyClients(channel, op_msg, nullptr);
+	}
+	if (channel->getMembers().empty())
+		server.deleteChannel(channel_name);
 }
 
 void CommandHandler::join(Client& client, const std::vector<std::string>& args)
@@ -252,6 +286,20 @@ void CommandHandler::join(Client& client, const std::vector<std::string>& args)
 	return;
 	
 	std::cout << "JOIN command received" << std::endl;
+
+	if (args.size() < 2 && args[1].empty())
+	{
+		std::set<std::string> channels = client.getChannels();
+		if (channels.empty())
+			return;
+		else
+		{
+			for (std::set<std::string>::iterator it = channels.begin(); it != channels.end(); ++it)
+				partSingleChannel(client, *it, client.getServer());
+			return;
+		}
+	}
+
 	
 	Server &server = client.getServer();
 	if (args.size() < 2)
@@ -262,7 +310,7 @@ void CommandHandler::join(Client& client, const std::vector<std::string>& args)
 	std::string channel_name = args[1];
 	if (channel_name.empty())
 		return;
-	std::string key;
+	std::string key = "";
 	if (args.size() >= 3)
 		key = args[2];
 	
@@ -319,38 +367,6 @@ void CommandHandler::ping(Client &client, const std::vector<std::string> &args)
 	client.send("PONG :" + args[1]);
 }
 
-static void partSingleChannel(Client &client, const std::string &channel_name, Server &server)
-{
-	Channel* channel = server.getChannel(channel_name);
-	if (!channel)
-	{
-		client.send(":" + server.getHostname() + " 403 " + channel_name + " :No such channel");
-		return;
-	}
-
-	if (!channel->isMember(&client))
-	{
-		client.send(":" + server.getHostname() + " 442 " + channel_name + " :You're not on that channel");
-		return;
-	}
-
-	channel->removeMember(&client);
-	if (channel->isOperator(&client))
-		channel->removeOperator(&client);
-	client.removeFromChannel(channel_name);
-
-	std::string part_msg = ":" + client.getPrefix() + " PART :" + channel_name;
-	server.notifyClients(channel, part_msg, &client);
-	if (!channel->getMembers().empty() && channel->getOperators().empty())
-	{
-		Client *new_op = *(channel->getMembers().begin());
-		channel->addOperator(new_op);
-		std::string op_msg = ":" + new_op->getPrefix() + " MODE " + channel->getName() + " +o " + new_op->getNickname();
-    	server.notifyClients(channel, op_msg, nullptr);
-	}
-	if (channel->getMembers().empty())
-		server.deleteChannel(channel_name);
-}
 
 void CommandHandler::part(Client& client, const std::vector<std::string>& args)
 {
@@ -387,12 +403,18 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 		return;
 	
 	std::cout << "MODE command received" << std::endl;
+
 	if (args.size() < 2)
 	{
 		client.send(":" + _server.getHostname() + " 461 MODE :Not enough parameters");
 		return;
 	}
 
+	const std::string& target = args[1];
+
+	if (target.empty() || (target[0] != '#' && target[0] != '&'))
+		return;
+	
 	Channel* channel = _server.getChannel(args[1]);
 
 	if (!channel)
@@ -443,8 +465,6 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 			adding = (c == '+');
         	continue;
 		}
-		std::cout << "DEBUG MODE: char=" << c << " adding=" << adding << " index=" << index 
-          << "/" << mode_params.size() << std::endl;
 		switch (c)
 		{
 		case 'i':
@@ -501,7 +521,6 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 			mode_signs += 'k';
 			break;
 		case 'l':
-			std::cout << "DEBUG accessing mode_params[" << index << "]" << std::endl;
 			if (adding)
 			{
 				if (index >= mode_params.size())
@@ -674,8 +693,8 @@ void CommandHandler::kick(Client& client, const std::vector<std::string>& args)
 		client.send(":" + _server.getHostname() + " 461 KICK :Not enough parameters");
 		return;
 	}
-	std::string target_nick = args[1];
-	std::string channel_name = args[2];
+	std::string channel_name = args[1];
+	std::string target_nick = args[2];
 	std::string reason;
 	if (args.size() > 3)
 		reason = args[3];
@@ -702,13 +721,15 @@ void CommandHandler::kick(Client& client, const std::vector<std::string>& args)
 		client.send(":" + _server.getHostname() + " 441 " + target_nick + " " + channel_name + " :They aren't on that channel");
 		return;
 	}
-	channel->removeMember(target_client);
-	if (channel->isOperator(target_client))
-		channel->removeOperator(target_client);
+
 	std::string kick_msg = ":" + client.getPrefix() + " KICK " + channel_name + " " + target_nick;
 	if (!reason.empty())
 		kick_msg += " :" + reason;
 	_server.notifyClients(channel, kick_msg, nullptr);
+	
+	channel->removeMember(target_client);
+	if (channel->isOperator(target_client))
+		channel->removeOperator(target_client);
 	target_client->removeFromChannel(channel_name);
 }
 

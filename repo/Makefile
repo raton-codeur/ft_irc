@@ -1,5 +1,5 @@
 NAME = ircserv
-FLAGS = -Wall -Wextra -Werror -std=c++98 -Iinc
+FLAGS = -Wall -Wextra -Werror -std=c++98 -Iinc -fsanitize=address -g3
 SRCS = $(addprefix src/, \
 	main.cpp \
 	Server.cpp \
