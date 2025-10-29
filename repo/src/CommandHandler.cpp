@@ -224,7 +224,7 @@ void CommandHandler::user(Client& client, const std::vector<std::string>& args)
 	std::string username = args[1];
 	std::string realname;
 	if (!args[4].empty() && args[4][0] == ':')
-	realname = args[4].substr(1);
+		realname = args[4].substr(1);
 	else
 	realname = args[4];
 	client.setUsername(username);
