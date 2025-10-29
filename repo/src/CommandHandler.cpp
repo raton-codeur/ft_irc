@@ -17,6 +17,7 @@ CommandHandler::CommandHandler(Server& server) : _server(server)
 	_commands["INVITE"] = &CommandHandler::invite;
 	_commands["TOPIC"] = &CommandHandler::topic;
 	_commands["MODE"] = &CommandHandler::mode;
+	_commands["QUIT"] = &CommandHandler::quit;
 }
 
 CommandHandler::~CommandHandler()
@@ -126,9 +127,7 @@ void CommandHandler::cap(Client &client, const std::vector<std::string> &args)
 			client.send(":" + _server.getHostname() + " CAP " + nick + " NAK :" + requested);
 	}
 	else if (subcommand == "END")
-	{
-		client.tryRegisterClient(_server.getHostname());
-	}
+		return;
 	else
 		client.send(":" + _server.getHostname() + " 410 " + client.getNickname() + " " + subcommand + " :Unknown CAP subcommand");
 }
@@ -179,6 +178,12 @@ static bool isValidNickname(const std::string& nickname)
 void CommandHandler::nick(Client& client, const std::vector<std::string>& args)
 {
 	std::cout << "NICK command received" << std::endl;
+	if (!client.isPasswordOk())
+	{
+		client.send(":" + _server.getHostname() + " 464 " + client.getNickname() + " :Password required");
+		return;
+	}
+	
 	if (args.size() < 2)
 	{
 		client.send(":" + _server.getHostname() + " 431 :No nickname given");
@@ -211,6 +216,11 @@ void CommandHandler::nick(Client& client, const std::vector<std::string>& args)
 void CommandHandler::user(Client& client, const std::vector<std::string>& args)
 {
 	std::cout << "USER command received" << std::endl;
+	if (!client.isPasswordOk())
+	{
+		client.send(":" + _server.getHostname() + " 464 " + client.getNickname() + " :Password required");
+		return;
+	}
 	if (client.isRegistered())
 	{
 		client.send(":" + _server.getHostname() + " 462 " + client.getNickname() + " :You may not reregister");
@@ -594,6 +604,21 @@ void CommandHandler::mode(Client &client, const std::vector<std::string> &args)
 		std::string mode_msg = ":" + client.getPrefix() + " MODE " + channel->getName() + " " + current_sign + mode_signs + mode_args;
 		_server.notifyClients(channel, mode_msg, nullptr);
 	}
+}
+
+void CommandHandler::quit(Client &client, const std::vector<std::string> &args)
+{
+	std::cout << "QUIT command received" << std::endl;
+	std::string quit_msg = "Client quit";
+	if (args.size() >= 2)
+	{
+		quit_msg = args[1];
+		if (!quit_msg.empty() && quit_msg[0] == ':')
+			quit_msg = quit_msg.substr(1);
+	}
+	std::string full_quit_msg = ":" + client.getPrefix() + " QUIT :" + quit_msg;
+	_server.notifyClients(client.getChannels(), full_quit_msg, &client);
+	client.setSoftDisconnect("client (fd " + std::to_string(client.getFd()) + "): soft disconnect: QUIT command", "server: disconnected: QUIT command");
 }
 
 void CommandHandler::privmsg(Client& client, const std::vector<std::string>& args)

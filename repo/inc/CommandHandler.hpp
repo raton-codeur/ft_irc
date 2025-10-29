@@ -31,6 +31,7 @@ private:
 	void invite(Client& client, const std::vector<std::string>& args);
 	void topic(Client& client, const std::vector<std::string>& args);
 	void mode(Client& client, const std::vector<std::string>& args);
+	void quit(Client& client, const std::vector<std::string>& args);
 
 	// utils
 	bool checkRegistered(Client& client);

@@ -156,6 +156,12 @@ void Server::deleteClient(size_t i)
 {
 	removeClientFromNickMap(_clients[i]->getNickname());
 	delete _clients[i];
+	if (i == _clients.size() - 1)
+	{
+		_clients.pop_back();
+		_pollArray.pop_back();
+		return;
+	}
 	_clients[i] = _clients.back();
 	_clients[i]->setI(i);
 	_clients.pop_back();
