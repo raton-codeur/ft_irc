@@ -41,21 +41,41 @@ static std::vector<std::string> split(const std::string& line)
 	{
 		while (i < len && std::isspace(static_cast<unsigned char>(line[i])))
 			i++;
-		if (i == len)
+		if (i >= len)
 			break;
+
 		if (line[i] == ':')
 		{
 			result.push_back(line.substr(i + 1));
 			break;
 		}
+
 		size_t start = i;
 		while (i < len && !std::isspace(static_cast<unsigned char>(line[i])))
 			i++;
 		result.push_back(line.substr(start, i - start));
 	}
+	// Le savais tu, irssi est le seul client a ajouter un : avant le nickname en cas de reponse a un privmsg
+	// ce qui soit dit en passant est contre la RFC 1459, qui demande un format de message comme ceci :<command> [ <params> ] [ :<trailing> ]
+	// ce morceau de code n'est la que pour accommoder ce client malfaisant.
+	if (result.size() == 2 && (result[0] == "PRIVMSG") && result[1].find(' ') != std::string::npos)
+	{
+		size_t space = result[1].find(' ');
+		std::string target = result[1].substr(0, space);
+		std::string message = result[1].substr(space + 1);
+		if (!target.empty() && target[0] == ':')
+			target.erase(0, 1);
+		if (!message.empty() && message[0] == ':')
+			message.erase(0, 1);
+		result[1] = target;
+		result.push_back(message);
+	}
+
+	if (result.size() > 1 && result[1].size() > 1 && result[1][0] == ':')
+		result[1].erase(0, 1);
+
 	return result;
 }
-
 void CommandHandler::parseAndExecute(Client& client, std::string& inbox)
 {
 	size_t startLine = 0, endLine;
