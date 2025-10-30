@@ -212,40 +212,31 @@ void CommandHandler::nick(Client& client, const std::vector<std::string>& args)
 		client.send(":" + _server.getHostname() + " 431 :No nickname given");
 		return;
 	}
-
 	std::string new_nick = args[1];
 	if (!isValidNickname(new_nick))
 	{
 		client.send(":" + _server.getHostname() + " 432 " + new_nick + " :Erroneous nickname");
 		return;
 	}
-
 	if (_server.getClientByNick(new_nick) != NULL)
 	{
 		client.send(":" + _server.getHostname() + " 433 " + new_nick + " :Nickname is already in use");
 		return;
 	}
-
 	std::string old_nick = client.getNickname();
-
-	
+	if (!old_nick.empty())
+		_server.removeClientFromNickMap(old_nick);
+	client.setNickname(new_nick);
+	_server.addClientToNickMap(client);
+	client.tryRegisterClient();
 	if (!old_nick.empty())
 	{
 		std::string prefix = ":" + old_nick;
 		if (!client.getUsername().empty())
 			prefix += "!" + client.getUsername() + "@" + client.getHostname();
 		std::string msg = prefix + " NICK :" + new_nick;
-		_server.notifyChannelMembers(client.getChannels(), msg, NULL);
 		client.send(msg);
-		_server.removeClientFromNickMap(old_nick);
-		client.setNickname(new_nick);
-		_server.addClientToNickMap(client);
-	}
-	else
-	{
-		client.setNickname(new_nick);
-		_server.addClientToNickMap(client);
-		client.tryRegisterClient();
+		_server.notifyChannelMembers(client.getChannels(), msg, &client);
 	}
 }
 
