@@ -231,7 +231,11 @@ void CommandHandler::nick(Client& client, const std::vector<std::string>& args)
 	client.tryRegisterClient();
 	if (!old_nick.empty())
 	{
-		std::string msg = ":" + old_nick + "!" + client.getUsername() + "@" + client.getHostname() + " NICK :" + new_nick;
+		std::string prefix = ":" + old_nick;
+		if (!client.getUsername().empty())
+			prefix += "!" + client.getUsername() + "@" + client.getHostname();
+		std::string msg = prefix + " NICK :" + new_nick;
+		client.send(msg);
 		_server.notifyChannelMembers(client.getChannels(), msg, &client);
 	}
 }
