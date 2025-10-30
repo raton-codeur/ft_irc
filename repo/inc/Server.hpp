@@ -24,13 +24,14 @@ private:
 	CommandHandler _cmdHandler;
 
 	// utils <-> run
-	void addClient(int client_fd);
-	void acceptClients();
-	void handleClientEvents();
-	void removeClients();
+		void addClient(int client_fd);
+		void acceptClients();
+		void handleClientEvents();
+		void removeClients();
 
-	// utils
-	void deleteClient(size_t i);
+		// utils
+		void detachClientFromChannels(Client& client);
+		void deleteClient(size_t i);
 
 	// disabled
 	Server();

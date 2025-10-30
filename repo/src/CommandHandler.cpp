@@ -113,7 +113,7 @@ void CommandHandler::parseAndExecute(Client& client, std::string& inbox)
 				for (size_t i = 1; i < args.size(); ++i)
 					std::cout << "<" << args[i] << "> ";
 				std::cout << std::endl;
-				client.send("unknown command: " + args[0]);
+				client.send(":" + _server.getHostname() + " 421 " + client.getNickname() + " " + command + " :Unknown command");
 			}
 		}
 		startLine = endLine + 1;
@@ -278,7 +278,7 @@ static std::vector<std::string> splitByChar(const std::string& str, char delim)
 	return result;
 }
 
-void CommandHandler::partSingleChannel(Client& client, const std::string& channel_name)
+void CommandHandler::partSingleChannel(Client& client, const std::string& channel_name, const std::string& reason)
 {
 	Channel* channel = _server.getChannel(channel_name);
 	if (!channel)
@@ -293,7 +293,9 @@ void CommandHandler::partSingleChannel(Client& client, const std::string& channe
 		return;
 	}
 
-	std::string part_msg = ":" + client.getPrefix() + " PART :" + channel_name;
+	std::string part_msg = ":" + client.getPrefix() + " PART " + channel_name;
+	if (!reason.empty())
+		part_msg += " :" + reason;
 	_server.notifyChannelMembers(channel, part_msg, NULL);
 
 	channel->removeMember(&client);
@@ -402,8 +404,12 @@ void CommandHandler::part(Client& client, const std::vector<std::string>& args)
 		return;
 	}
 	std::vector<std::string> channels = splitByChar(args[1], ',');
+	std::string reason;
+	if (args.size() > 3)
+		reason = args[3];
+
 	for (size_t i = 0; i < channels.size(); ++i)
-		partSingleChannel(client, channels[i]);
+		partSingleChannel(client, channels[i], reason);
 }
 
 bool static checkKey(const std::string& key)
@@ -696,9 +702,8 @@ void CommandHandler::invite(Client& client, const std::vector<std::string>& args
 		return;
 	}
 	channel->invite(target_client);
+	client.send(":" + _server.getHostname() + " 341 " + client.getNickname() + " " + target_nick + " " + channel_name);
 	target_client->send(":" + client.getPrefix() + " INVITE " + target_nick + " :" + channel_name);
-	std::string msg = ":" + client.getPrefix() + " INVITE " + target_nick + " :" + channel_name;
-	_server.notifyChannelMembers(channel, msg, &client);
 }
 
 void CommandHandler::kick(Client& client, const std::vector<std::string>& args)

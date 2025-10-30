@@ -35,7 +35,7 @@ private:
 
 	// utils
 	bool checkRegistered(Client& client);
-	void partSingleChannel(Client& client, const std::string& channel_name);
+	void partSingleChannel(Client& client, const std::string& channel_name, const std::string& reason = "");
 
 	// disabled
 	CommandHandler();
