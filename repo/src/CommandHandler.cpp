@@ -74,9 +74,8 @@ static std::vector<std::string> split(const std::string& line)
 	return result;
 }
 
-static void printArgs(const std::string& command, const std::vector<std::string>& args)
+static void printArgs(const std::vector<std::string>& args)
 {
-	std::cout << "<" << command << "> ";
 	for (size_t i = 1; i < args.size(); ++i)
 		std::cout << "<" << args[i] << "> ";
 	std::cout << std::endl;
@@ -107,14 +106,15 @@ void CommandHandler::parseAndExecute(Client& client, std::string& inbox)
 			std::map<std::string, CommandFunction>::iterator it = _commands.find(command);
 			if (it != _commands.end())
 			{
-				printArgs(command, args);
+				std::cout << "received command: <" << command << "> ";
+				printArgs(args);
 				(this->*(it->second))(client, args);
 			}
 			else
 			{
-				std::cout << "unknown: ";
-				printArgs(command, args);
-				client.send(":" + _server.getHostname() + " 421 " + client.getNickname() + " " + command + " :Unknown command");
+				std::cout << "received (unknown): <" << args[0] << "> ";
+				printArgs(args);
+				client.send(":" + _server.getHostname() + " 421 " + client.getNickname() + " " + args[0] + " :Unknown command");
 			}
 		}
 		startLine = endLine + 1;
@@ -663,7 +663,7 @@ void CommandHandler::privmsg(Client& client, const std::vector<std::string>& arg
 			client.send(":" + _server.getHostname() + " 401 " + target + " :No such nick");
 			return;
 		}
-		std::string msg = ":" + client.getPrefix() + " PRIVMSG " + target + " :" + message;
+		std::string msg = client.getPrefix() + " PRIVMSG " + target + " :" + message;
 		target_client->send(msg);
 	}
 }
@@ -808,5 +808,5 @@ void CommandHandler::quit(Client& client, const std::vector<std::string>& args)
 		quit_msg = args[1];
 	std::string full_quit_msg = ":" + client.getPrefix() + " QUIT :" + quit_msg;
 	_server.notifyChannelMembers(client.getChannels(), full_quit_msg, &client);
-	client.setSoftDisconnect("client (fd " + std::to_string(client.getFd()) + ", i " + std::to_string(client.getI()) + "): soft disconnect: QUIT command received", "disconnected");
+	client.setSoftDisconnect("disconnected client: QUIT command", "disconnected");
 }
