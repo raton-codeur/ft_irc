@@ -142,42 +142,10 @@ void Server::handleClientEvents()
 	}
 }
 
-void Server::detachClientFromChannels(Client& client)
-{
-	std::set<std::string> channels(client.getChannels());
-	for (std::set<std::string>::const_iterator it = channels.begin(); it != channels.end(); ++it)
-	{
-		const std::string& name = *it;
-		Channel* channel = getChannel(name);
-		if (!channel)
-		{
-			client.removeFromChannel(name);
-			continue;
-		}
-		channel->removeMember(&client);
-		if (channel->isOperator(&client))
-			channel->removeOperator(&client);
-		channel->removeInvite(&client);
-		client.removeFromChannel(name);
-
-		if (!channel->getMembers().empty() && channel->getOperators().empty())
-		{
-			Client* new_op = *(channel->getMembers().begin());
-			channel->addOperator(new_op);
-			std::string op_msg = ":" + new_op->getPrefix() + " MODE " + channel->getName() + " +o " + new_op->getNickname();
-			notifyChannelMembers(channel, op_msg, NULL);
-		}
-		if (channel->getMembers().empty())
-			deleteChannel(name);
-	}
-}
-
 void Server::deleteClient(size_t i)
 {
-	Client* client = _clients[i];
-	detachClientFromChannels(*client);
-	removeClientFromNickMap(client->getNickname());
-	delete client;
+	removeClientFromNickMap(_clients[i]->getNickname());
+	delete _clients[i];
 	if (i == _clients.size() - 1)
 	{
 		_clients.pop_back();
@@ -286,7 +254,7 @@ void Server::notifyChannelMembers(Channel* channel, const std::string& message, 
 
 	const std::set<Client*>& members = channel->getMembers();
 	for (std::set<Client*>::const_iterator it = members.begin(); it != members.end(); ++it)
-		{
+	{
 		if (*it && *it != exclude)
 			(*it)->send(message);
 	}

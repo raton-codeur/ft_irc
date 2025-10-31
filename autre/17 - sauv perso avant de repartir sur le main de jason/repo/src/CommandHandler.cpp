@@ -41,41 +41,21 @@ static std::vector<std::string> split(const std::string& line)
 	{
 		while (i < len && std::isspace(static_cast<unsigned char>(line[i])))
 			i++;
-		if (i >= len)
+		if (i == len)
 			break;
-
 		if (line[i] == ':')
 		{
 			result.push_back(line.substr(i + 1));
 			break;
 		}
-
 		size_t start = i;
 		while (i < len && !std::isspace(static_cast<unsigned char>(line[i])))
 			i++;
 		result.push_back(line.substr(start, i - start));
 	}
-	// Le savais tu, irssi est le seul client a ajouter un : avant le nickname en cas de reponse a un privmsg
-	// ce qui soit dit en passant est contre la RFC 1459, qui demande un format de message comme ceci :<command> [ <params> ] [ :<trailing> ]
-	// ce morceau de code n'est la que pour accommoder ce client malfaisant.
-	if (result.size() == 2 && (result[0] == "PRIVMSG") && result[1].find(' ') != std::string::npos)
-	{
-		size_t space = result[1].find(' ');
-		std::string target = result[1].substr(0, space);
-		std::string message = result[1].substr(space + 1);
-		if (!target.empty() && target[0] == ':')
-			target.erase(0, 1);
-		if (!message.empty() && message[0] == ':')
-			message.erase(0, 1);
-		result[1] = target;
-		result.push_back(message);
-	}
-
-	if (result.size() > 1 && result[1].size() > 1 && result[1][0] == ':')
-		result[1].erase(0, 1);
-
 	return result;
 }
+
 void CommandHandler::parseAndExecute(Client& client, std::string& inbox)
 {
 	size_t startLine = 0, endLine;
@@ -113,7 +93,7 @@ void CommandHandler::parseAndExecute(Client& client, std::string& inbox)
 				for (size_t i = 1; i < args.size(); ++i)
 					std::cout << "<" << args[i] << "> ";
 				std::cout << std::endl;
-				client.send(":" + _server.getHostname() + " 421 " + client.getNickname() + " " + command + " :Unknown command");
+				client.send("unknown command: " + args[0]);
 			}
 		}
 		startLine = endLine + 1;
@@ -231,11 +211,7 @@ void CommandHandler::nick(Client& client, const std::vector<std::string>& args)
 	client.tryRegisterClient();
 	if (!old_nick.empty())
 	{
-		std::string prefix = ":" + old_nick;
-		if (!client.getUsername().empty())
-			prefix += "!" + client.getUsername() + "@" + client.getHostname();
-		std::string msg = prefix + " NICK :" + new_nick;
-		client.send(msg);
+		std::string msg = ":" + old_nick + "!" + client.getUsername() + "@" + client.getHostname() + " NICK :" + new_nick;
 		_server.notifyChannelMembers(client.getChannels(), msg, &client);
 	}
 }
@@ -262,7 +238,7 @@ void CommandHandler::user(Client& client, const std::vector<std::string>& args)
 	if (!args[4].empty() && args[4][0] == ':')
 		realname = args[4].substr(1);
 	else
-	realname = args[4];
+		realname = args[4];
 	client.setUsername(username);
 	client.setRealname(realname);
 	client.tryRegisterClient();
@@ -277,12 +253,12 @@ static std::vector<std::string> splitByChar(const std::string& str, char delim)
 	while (std::getline(ss, token, delim))
 	{
 		if (!token.empty())
-		result.push_back(token);
+			result.push_back(token);
 	}
 	return result;
 }
 
-void CommandHandler::partSingleChannel(Client& client, const std::string& channel_name, const std::string& reason)
+void CommandHandler::partSingleChannel(Client& client, const std::string& channel_name)
 {
 	Channel* channel = _server.getChannel(channel_name);
 	if (!channel)
@@ -297,9 +273,7 @@ void CommandHandler::partSingleChannel(Client& client, const std::string& channe
 		return;
 	}
 
-	std::string part_msg = ":" + client.getPrefix() + " PART " + channel_name;
-	if (!reason.empty())
-		part_msg += " :" + reason;
+	std::string part_msg = ":" + client.getPrefix() + " PART :" + channel_name;
 	_server.notifyChannelMembers(channel, part_msg, NULL);
 
 	channel->removeMember(&client);
@@ -408,12 +382,8 @@ void CommandHandler::part(Client& client, const std::vector<std::string>& args)
 		return;
 	}
 	std::vector<std::string> channels = splitByChar(args[1], ',');
-	std::string reason;
-	if (args.size() > 3)
-		reason = args[3];
-
 	for (size_t i = 0; i < channels.size(); ++i)
-		partSingleChannel(client, channels[i], reason);
+		partSingleChannel(client, channels[i]);
 }
 
 bool static checkKey(const std::string& key)
@@ -706,8 +676,9 @@ void CommandHandler::invite(Client& client, const std::vector<std::string>& args
 		return;
 	}
 	channel->invite(target_client);
-	client.send(":" + _server.getHostname() + " 341 " + client.getNickname() + " " + target_nick + " " + channel_name);
 	target_client->send(":" + client.getPrefix() + " INVITE " + target_nick + " :" + channel_name);
+	std::string msg = ":" + client.getPrefix() + " INVITE " + target_nick + " :" + channel_name;
+	_server.notifyChannelMembers(channel, msg, &client);
 }
 
 void CommandHandler::kick(Client& client, const std::vector<std::string>& args)
