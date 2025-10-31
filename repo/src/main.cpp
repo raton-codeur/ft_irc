@@ -16,6 +16,6 @@ int main(int argc, char** argv)
 		std::cerr << e.what() << std::endl;
 		return EXIT_FAILURE;
 	}
-	std::cout << "exit success" << std::endl;
-	return EXIT_SUCCESS;
+	std::cout << "exit";
+	return 0;
 }

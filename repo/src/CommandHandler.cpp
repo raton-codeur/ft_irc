@@ -474,6 +474,13 @@ void CommandHandler::mode(Client& client, const std::vector<std::string>& args)
 	}
 
 	std::string mode_changes = args[2];
+	size_t plusCount = std::count(mode_changes.begin(), mode_changes.end(), '+');
+	size_t minusCount = std::count(mode_changes.begin(), mode_changes.end(), '-');
+	if (plusCount > 1 || minusCount > 1)
+	{
+		client.send(":" + _server.getHostname() + " 472 :Too many mode signs changes");
+		return;
+	}
 	size_t index = 0;
 	bool adding = true;
 	std::vector<std::string> mode_params(args.begin() + 3, args.end());
