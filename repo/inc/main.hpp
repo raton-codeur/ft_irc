@@ -19,6 +19,8 @@
 #include <fcntl.h>
 #include <poll.h>
 
+#include "Colors.hpp"
+
 struct StopRequested {};
 
 extern volatile sig_atomic_t g_stopRequested;

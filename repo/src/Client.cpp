@@ -1,6 +1,7 @@
 #include "Server.hpp"
 #include "Client.hpp"
 #include "CommandHandler.hpp"
+#include "Colors.hpp"
 
 Client::Client(Server& server, int fd, size_t i) : _server(server), _fd(fd), _i(i), _outboxOffset(0), _hostname("localhost"), _passwordOk(false), _registered(false), _softDisconnect(false), _hardDisconnect(false)
 {
@@ -99,7 +100,53 @@ void Client::sendWelcome()
 	send(":" + _server.getHostname() + " 003 " + nick + " :This server was created just now");
 	send(":" + _server.getHostname() + " 004 " + nick + " " + _server.getHostname() + " 1.0 i o t k l");
 	send(":" + _server.getHostname() + " 375 " + nick + " :- " + _server.getHostname() + " Message of the day - ");
-	send(":" + _server.getHostname() + " 372 " + nick + " :- Vive les crepes!");
+	static const char* motd[] = 
+	{
+		"▌ ▌   ▜                                 	              ,,))))))));,",
+		"▌▖▌▞▀▖▐ ▞▀▖▞▀▖▛▚▀▖▞▀▖                              __)))))))))))))),",
+		"▙▚▌▛▀ ▐ ▌ ▖▌ ▌▌▐ ▌▛▀                    \\|/       -\\(((((''''((((((((.",
+		"▘ ▘▝▀▘ ▘▝▀ ▝▀ ▘▝ ▘▝▀▘                   -*-==//////((''  .     `)))))),",
+		"                                        /|\\      ))| o    ;-.    '(((((                                  ,(,",
+		"                                                 ( `|    /  )    ;))))'                               ,_))^;(~",
+		"▜▘▛▀▖▞▀▖ ▞▀▖                                        |   |   |   ,))((((_     _____------~~~-.        %,;(;(>';'~",
+		"▐ ▙▄▘▌   ▚▄ ▞▀▖▙▀▖▌ ▌▞▀▖▙▀▖                         o_);   ;    )))(((` ~---~  `::           \\      %%~~)(v;(`('~",
+		"▐ ▌▚ ▌ ▖ ▖ ▌▛▀ ▌  ▐▐ ▛▀ ▌                           o_);   ;    )))(((` ~---~  `::           \\      %%~~)(v;(`('~",
+		"▀▘▘ ▘▝▀  ▝▀ ▝▀▘▘   ▘ ▝▀▘▘                                 ;    ''''````         `:       `:::|\\,__,%%    );`'; ~",
+		"▛▀▖    ▞▀▖▌               ▞▚   ▜▘▐        ▐               ;    ''''````         `:       `:::|\\,__,%%    );`'; ~",
+		"▙▄▘▌ ▌ ▌ ▌▛▀▖▝▀▖▌ ▌▌ ▌▌ ▌ ▚    ▐ ▜▀ ▞▀▖▞▀▘▜▀ ▞▀▖         |   _                )     /      `:|`----'     `-'",
+		"▌ ▌▚▄▌ ▌▚▘▌ ▌▞▀▌▌ ▌▌ ▌▚▄▌ ▌▚▘ ▌▐ ▐ ▖▛▀ ▝▀▖▐ ▖▛▀          |   _                )     /      `:|`----'     `-'",
+		"▀▀ ▗▄▘ ▝▘▘▘ ▘▝▀▘▝▀▘▝▀▘▗▄▘ ▝▘▘ ▝▘  ▀ ▝▀▘▀▀  ▀ ▝▀▘ /~;;.____/;;'  /          ___--,-(   `;;;/",
+		"                                                / //  _;______;'------~~~~~    /;;/\\    /",
+		"                                               //  | |                        / ;   \\;;,\\",
+		"                                              (<_  | ;                      /',/-----'  _>",
+		"                                               \\_| ||_                     //~;~~~~~~~~~",
+		"                                                                              \\~\\",
+		"                                                                                ~~"
+	};
+
+	static const char* colors[] = {
+		RED,
+		YELLOW,
+		GREEN,
+		CYAN,
+		BLUE,
+		MAGENTA,
+		BRIGHT_RED,
+		BRIGHT_YELLOW,
+		BRIGHT_GREEN,
+		BRIGHT_CYAN,
+		BRIGHT_BLUE,
+		BRIGHT_MAGENTA
+	};
+	const size_t motdCount = sizeof(motd) / sizeof(*motd);
+	const size_t colorCount = sizeof(colors) / sizeof(*colors);
+	for (size_t i = 0; i < motdCount; ++i)
+	{
+		std::string coloredLine(colors[i % colorCount]);
+		coloredLine += motd[i];
+		coloredLine += RESET;
+		send(":" + _server.getHostname() + " 372 " + nick + " :- " + coloredLine);
+	}
 	send(":" + _server.getHostname() + " 376 " + nick + " :End of /MOTD command.");
 }
 
