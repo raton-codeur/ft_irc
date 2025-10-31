@@ -56,10 +56,7 @@ Server::Server(int argc, char** argv) : _hostname("irc.qhauuy-jteste.local"), _c
 Server::~Server()
 {
 	if (_server_fd != -1)
-	{
 		close(_server_fd);
-		std::cout << "server fd: closed" << std::endl;
-	}
 	for (size_t i = 1; i < _clients.size(); ++i)
 		delete _clients[i];
 	for (std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
@@ -127,11 +124,11 @@ void Server::handleClientEvents()
 			if (_pollArray[i].revents & (POLLHUP | POLLERR | POLLNVAL))
 			{
 				if (_pollArray[i].revents & POLLNVAL)
-					_clients[i]->setHardDisconnect("client (fd " + std::to_string(_clients[i]->getFd()) + ", i " + std::to_string(i) + "): hard disconnect: invalid fd");
+					_clients[i]->setHardDisconnect("disconnected client: invalid fd");
 				else if (_pollArray[i].revents & POLLERR)
-					_clients[i]->setHardDisconnect("client (fd " + std::to_string(_clients[i]->getFd()) + ", i " + std::to_string(i) + "): hard disconnect: network error");
+					_clients[i]->setHardDisconnect("disconnected client: network error");
 				else
-					_clients[i]->setHardDisconnect("client (fd " + std::to_string(_clients[i]->getFd()) + ", i " + std::to_string(i) + "): hard disconnect: disconnected");
+					_clients[i]->setHardDisconnect("disconnected client");
 				continue;
 			}
 			if (_pollArray[i].revents & POLLIN)
@@ -260,7 +257,7 @@ void Server::deleteChannel(const std::string& name)
 	{
 		delete it->second;
 		_channels.erase(it);
-		std::cout << "channel " << name << ": deleted (empty)" << std::endl;
+		std::cout << "channel " << name << ": deleted" << std::endl;
 	}
 }
 

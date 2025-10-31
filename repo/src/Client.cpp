@@ -4,13 +4,12 @@
 
 Client::Client(Server& server, int fd, size_t i) : _server(server), _fd(fd), _i(i), _outboxOffset(0), _hostname("localhost"), _passwordOk(false), _registered(false), _softDisconnect(false), _hardDisconnect(false)
 {
-	std::cout << "new client (fd " << fd << ", id " << i << ")" << std::endl;
+	std::cout << "new client" << std::endl;
 }
 
 Client::~Client()
 {
 	close(_fd);
-	std::cout << "fd " << _fd << ": closed" << std::endl;
 }
 
 int Client::getFd() const
@@ -191,7 +190,7 @@ void Client::handlePOLLIN(CommandHandler& cmdHandler)
 		}
 		else if (n == 0)
 		{
-			setHardDisconnect("client (fd " + std::to_string(_fd) + ", i" + std::to_string(_i) + "): hard disconnect: disconnected");
+			setHardDisconnect("disconnected client");
 			return;
 		}
 		else if (errno == EINTR)
@@ -200,7 +199,7 @@ void Client::handlePOLLIN(CommandHandler& cmdHandler)
 			break;
 		else
 		{
-			setHardDisconnect("client (fd " + std::to_string(_fd) + ", i" + std::to_string(_i) + "): hard disconnect: recv error");
+			setHardDisconnect("disconnected client: recv error");
 			return;
 		}
 	}
@@ -237,7 +236,7 @@ void Client::handlePOLLOUT()
 			return;
 		else
 		{
-			setHardDisconnect("client (fd " + std::to_string(_fd) + ", i" + std::to_string(_i) + "): hard disconnect: send error");
+			setHardDisconnect("disconnected client: send error");
 			return;
 		}
 	}

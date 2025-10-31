@@ -55,9 +55,6 @@ static std::vector<std::string> split(const std::string& line)
 			i++;
 		result.push_back(line.substr(start, i - start));
 	}
-	// Le savais tu, irssi est le seul client a ajouter un : avant le nickname en cas de reponse a un privmsg
-	// ce qui soit dit en passant est contre la RFC 1459, qui demande un format de message comme ceci :<command> [ <params> ] [ :<trailing> ]
-	// ce morceau de code n'est la que pour accommoder ce client malfaisant.
 	if (result.size() == 2 && (result[0] == "PRIVMSG") && result[1].find(' ') != std::string::npos)
 	{
 		size_t space = result[1].find(' ');
@@ -76,6 +73,15 @@ static std::vector<std::string> split(const std::string& line)
 
 	return result;
 }
+
+static void printArgs(const std::string& command, const std::vector<std::string>& args)
+{
+	std::cout << "<" << command << "> ";
+	for (size_t i = 1; i < args.size(); ++i)
+		std::cout << "<" << args[i] << "> ";
+	std::cout << std::endl;
+}
+
 void CommandHandler::parseAndExecute(Client& client, std::string& inbox)
 {
 	size_t startLine = 0, endLine;
@@ -87,7 +93,7 @@ void CommandHandler::parseAndExecute(Client& client, std::string& inbox)
 	{
 		if (endLine - startLine + 1 > _MAX_LINE_LENGTH)
 		{
-			client.setSoftDisconnect("client (fd " + std::to_string(client.getFd()) + "): soft disconnect: line too long", "server: disconnected: line too long");
+			client.setSoftDisconnect("disconnected client: line too long", "disconnected: line too long");
 			return;
 		}
 		if (endLine > 0 && inbox[endLine - 1] == '\r')
@@ -101,18 +107,13 @@ void CommandHandler::parseAndExecute(Client& client, std::string& inbox)
 			std::map<std::string, CommandFunction>::iterator it = _commands.find(command);
 			if (it != _commands.end())
 			{
-				std::cout << "received: <" << command << "> ";
-				for (size_t i = 1; i < args.size(); ++i)
-					std::cout << "<" << args[i] << "> ";
-				std::cout << std::endl;
+				printArgs(command, args);
 				(this->*(it->second))(client, args);
 			}
 			else
 			{
-				std::cout << "received (unknown): <" << command << "> ";
-				for (size_t i = 1; i < args.size(); ++i)
-					std::cout << "<" << args[i] << "> ";
-				std::cout << std::endl;
+				std::cout << "unknown: ";
+				printArgs(command, args);
 				client.send(":" + _server.getHostname() + " 421 " + client.getNickname() + " " + command + " :Unknown command");
 			}
 		}
