@@ -327,5 +327,5 @@ void Server::sendNamesList(Client& client, Channel* channel)
 		names += (*it)->getNickname();
 	}
 	client.send(":" + _hostname + " 353 " + client.getNickname() + " = " + channel->getName() + " :" + names);
-	client.send(":" + _hostname + " 366 " + client.getNickname() + " " +channel->getName() + " :End of /NAMES list");
+	client.send(":" + _hostname + " 366 " + client.getNickname() + " " + channel->getName() + " :End of /NAMES list");
 }

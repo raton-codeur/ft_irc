@@ -215,6 +215,10 @@ void Client::printDisconnectLog() const
 
 void Client::send(const std::string& message)
 {
+	if (!_nickname.empty())
+		std::cout << _nickname << " >>> " << message << std::endl;
+	else
+		std::cout << ">>> " << message << std::endl;
 	_outbox.push_back(message + "\r\n");
 	_server.addPOLLOUT(_i);
 }

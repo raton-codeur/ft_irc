@@ -76,8 +76,8 @@ static std::vector<std::string> split(const std::string& line)
 
 static void printArgs(const std::vector<std::string>& args)
 {
-	for (size_t i = 1; i < args.size(); ++i)
-		std::cout << "<" << args[i] << "> ";
+	for (size_t i = 0; i < args.size(); ++i)
+		std::cout << args[i] << " ";
 	std::cout << std::endl;
 }
 
@@ -102,20 +102,16 @@ void CommandHandler::parseAndExecute(Client& client, std::string& inbox)
 		args = split(line);
 		if (!args.empty())
 		{
+			if (!client.getNickname().empty())
+				std::cout << client.getNickname() << " ";
+			std::cout << "<<< ";
+			printArgs(args);
 			command = toUpper(args[0]);
 			std::map<std::string, CommandFunction>::iterator it = _commands.find(command);
 			if (it != _commands.end())
-			{
-				std::cout << "received command: <" << command << "> ";
-				printArgs(args);
 				(this->*(it->second))(client, args);
-			}
 			else
-			{
-				std::cout << "received (unknown): <" << args[0] << "> ";
-				printArgs(args);
 				client.send(":" + _server.getHostname() + " 421 " + client.getNickname() + " " + args[0] + " :Unknown command");
-			}
 		}
 		startLine = endLine + 1;
 		endLine = inbox.find("\n", startLine);
@@ -298,7 +294,7 @@ void CommandHandler::partSingleChannel(Client& client, const std::string& channe
 		return;
 	}
 
-	std::string part_msg = ":" + client.getPrefix() + " PART " + channel_name;
+	std::string part_msg = client.getPrefix() + " PART " + channel_name;
 	if (!reason.empty())
 		part_msg += " :" + reason;
 	_server.notifyChannelMembers(channel, part_msg, NULL);
@@ -378,7 +374,7 @@ void CommandHandler::join(Client& client, const std::vector<std::string>& args)
 	if (channel->getMembers().size() == 1)
 		channel->addOperator(&client);
 
-	std::string join_msg = ":" + client.getPrefix() + " JOIN :" + channel_name;
+	std::string join_msg = client.getPrefix() + " JOIN :" + channel_name;
 	_server.notifyChannelMembers(channel, join_msg, &client);
 
 	if (channel->getTopic().empty())
@@ -494,7 +490,7 @@ void CommandHandler::mode(Client& client, const std::vector<std::string>& args)
 		{
 			if (!mode_signs.empty())
         	{
-            std::string msg = ":" + client.getPrefix() + " MODE " + channel->getName() + " " + current_sign + mode_signs + mode_args;
+            std::string msg = client.getPrefix() + " MODE " + channel->getName() + " " + current_sign + mode_signs + mode_args;
             _server.notifyChannelMembers(channel, msg, NULL);
             mode_signs.clear();
             mode_args.clear();
@@ -629,7 +625,7 @@ void CommandHandler::mode(Client& client, const std::vector<std::string>& args)
 	}
 	if (!mode_signs.empty())
 	{
-		std::string mode_msg = ":" + client.getPrefix() + " MODE " + channel->getName() + " " + current_sign + mode_signs + mode_args;
+		std::string mode_msg = client.getPrefix() + " MODE " + channel->getName() + " " + current_sign + mode_signs + mode_args;
 		_server.notifyChannelMembers(channel, mode_msg, NULL);
 	}
 }
@@ -659,7 +655,7 @@ void CommandHandler::privmsg(Client& client, const std::vector<std::string>& arg
 			client.send(":" + _server.getHostname() + " 404 " + target + " :Cannot send to channel");
 			return;
 		}
-		std::string msg = ":" + client.getPrefix() + " PRIVMSG " + target + " :" + message;
+		std::string msg = client.getPrefix() + " PRIVMSG " + target + " :" + message;
 		_server.notifyChannelMembers(channel, msg, &client);
 	}
 	else
@@ -715,7 +711,7 @@ void CommandHandler::invite(Client& client, const std::vector<std::string>& args
 	}
 	channel->invite(target_client);
 	client.send(":" + _server.getHostname() + " 341 " + client.getNickname() + " " + target_nick + " " + channel_name);
-	target_client->send(":" + client.getPrefix() + " INVITE " + target_nick + " :" + channel_name);
+	target_client->send(client.getPrefix() + " INVITE " + target_nick + " :" + channel_name);
 }
 
 void CommandHandler::kick(Client& client, const std::vector<std::string>& args)
@@ -756,7 +752,7 @@ void CommandHandler::kick(Client& client, const std::vector<std::string>& args)
 		return;
 	}
 
-	std::string kick_msg = ":" + client.getPrefix() + " KICK " + channel_name + " " + target_nick;
+	std::string kick_msg = client.getPrefix() + " KICK " + channel_name + " " + target_nick;
 	if (!reason.empty())
 		kick_msg += " :" + reason;
 	_server.notifyChannelMembers(channel, kick_msg, NULL);
@@ -804,7 +800,7 @@ void CommandHandler::topic(Client& client, const std::vector<std::string>& args)
 	}
 	std::string new_topic = args[2];
 	channel->setTopic(new_topic);
-	std::string msg = ":" + client.getPrefix() + " TOPIC " + channel_name + " :" + new_topic;
+	std::string msg = client.getPrefix() + " TOPIC " + channel_name + " :" + new_topic;
 	_server.notifyChannelMembers(channel, msg, NULL);
 }
 
@@ -813,7 +809,7 @@ void CommandHandler::quit(Client& client, const std::vector<std::string>& args)
 	std::string quit_msg = "leaving";
 	if (args.size() >= 2)
 		quit_msg = args[1];
-	std::string full_quit_msg = ":" + client.getPrefix() + " QUIT :" + quit_msg;
+	std::string full_quit_msg = client.getPrefix() + " QUIT :" + quit_msg;
 	_server.notifyChannelMembers(client.getChannels(), full_quit_msg, &client);
 	client.setSoftDisconnect("disconnected client: QUIT command", "disconnected");
 }

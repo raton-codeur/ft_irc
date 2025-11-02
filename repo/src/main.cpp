@@ -17,5 +17,5 @@ int main(int argc, char** argv)
 		return EXIT_FAILURE;
 	}
 	std::cout << "exit";
-	return 0;
+	return EXIT_SUCCESS;
 }
