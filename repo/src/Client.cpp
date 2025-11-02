@@ -1,7 +1,6 @@
 #include "Server.hpp"
 #include "Client.hpp"
 #include "CommandHandler.hpp"
-#include "Colors.hpp"
 
 Client::Client(Server& server, int fd, size_t i) : _server(server), _fd(fd), _i(i), _outboxOffset(0), _hostname("localhost"), _passwordOk(false), _registered(false), _softDisconnect(false), _hardDisconnect(false)
 {
@@ -100,7 +99,7 @@ void Client::sendWelcome()
 	send(":" + _server.getHostname() + " 003 " + nick + " :This server was created just now");
 	send(":" + _server.getHostname() + " 004 " + nick + " " + _server.getHostname() + " 1.0 i o t k l");
 	send(":" + _server.getHostname() + " 375 " + nick + " :- " + _server.getHostname() + " Message of the day - ");
-	static const char* motd[] = 
+	static const char* motd[] =
 	{
 		"▌ ▌   ▜                                 	              ,,))))))));,",
 		"▌▖▌▞▀▖▐ ▞▀▖▞▀▖▛▚▀▖▞▀▖                              __)))))))))))))),",
