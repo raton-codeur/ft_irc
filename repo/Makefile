@@ -1,5 +1,5 @@
 NAME = ircserv
-FLAGS = -Wall -Wextra -Werror -std=c++98 -Iinc -fsanitize=address -g3
+FLAGS = -Wall -Wextra -Werror -std=c++98 -Iinc -g3
 SRCS = $(addprefix src/, \
 	main.cpp \
 	Server.cpp \
@@ -35,11 +35,7 @@ test : re
 nc :
 	nc 127.0.0.1 6667
 
-d :
-	docker run --rm -it -v "$$PWD":/repo -w /repo -p 6667:6667 gcc
-
-i :
-	@ nick=$$(LC_ALL=C tr -dc 'a-z' < /dev/urandom | head -c 3); LC_ALL=C sed -i "" "5s/.*/    nick = $${nick};/" irssi.config
+irssi :
 	irssi --config irssi.config
 
-.PHONY: all clean fclean re test nc d i
+.PHONY: all clean fclean re test nc irssi

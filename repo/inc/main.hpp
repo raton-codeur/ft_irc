@@ -8,12 +8,15 @@
 #include <vector>
 #include <set>
 #include <deque>
+#include <algorithm>
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <cerrno>
 #include <csignal>
 
+#include <limits.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <fcntl.h>

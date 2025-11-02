@@ -69,7 +69,8 @@ std::string Channel::getModesAsString() const
 	if (hasMode(LIMIT))
 	{
 		mode_flags += "l";
-		mode_args += " " + std::to_string(_limit);
+		mode_args += " ";
+		mode_args += _limit;
 	}
 
 	return mode_flags + " " + mode_args;

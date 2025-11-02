@@ -569,7 +569,7 @@ void CommandHandler::mode(Client& client, const std::vector<std::string>& args)
 				long limit;
 				try
 				{
-					limit = std::stol(mode_params[index].c_str(), NULL, 10);
+					limit = std::atol(mode_params[index].c_str());
 				}
 				catch(...)
 				{
