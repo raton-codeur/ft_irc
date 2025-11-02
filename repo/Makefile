@@ -33,9 +33,9 @@ run : all
 	./$(NAME) 6667 okok
 
 nc :
-	nc localhost 6667
+	nc -q0 localhost 6667
 
-irssi :
-	irssi --config irssi.config
+irssi-% :
+	irssi --config irssi.config; echo $*
 
 .PHONY: all clean fclean re run nc irssi
