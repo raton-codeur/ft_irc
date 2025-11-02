@@ -36,6 +36,6 @@ nc :
 	nc -q0 localhost 6667
 
 irssi-% :
-	irssi --config irssi.config; echo $*
+	irssi --config irssi.config
 
 .PHONY: all clean fclean re run nc irssi
