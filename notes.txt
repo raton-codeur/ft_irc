@@ -1,10 +1,14 @@
 -
-notes we fin octobre
-
-j'ai pas push les dernières modifs pour adapter à l'ordi de l'école
-
-j'aime pas le texte ascii, il est trop large
-
 ctrl + d
 si le buffer est vide, ça envoie EOF (client va être déconnecté), sinon ça envoie le contenu du buffer sans retour à la ligne
+
+
+
+à faire :
+
+changer le texte ascii, il est trop gros
+
+retirer fsanitize
+
+retirer le mot de passe dans le makefile et le irssi.config avant de commit
 

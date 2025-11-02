@@ -1,17 +1,15 @@
 NAME = ircserv
-FLAGS = -Wall -Wextra -Werror -std=c++98 -Iinc -g3
+FLAGS = -Wall -Wextra -Werror -std=c++98 -Iinc -g3 -fsanitize=address
 SRCS = $(addprefix src/, \
 	main.cpp \
 	Server.cpp \
 	Client.cpp \
-	Channel.cpp \
 	CommandHandler.cpp \
+	Channel.cpp \
 	utils.cpp \
 	signals.cpp \
 )
 OBJS = $(patsubst src/%.cpp, tmp/%.o, $(SRCS))
-
-all : $(NAME)
 
 tmp/%.o : src/%.cpp
 	@ mkdir -p tmp
@@ -19,6 +17,8 @@ tmp/%.o : src/%.cpp
 
 $(NAME) : $(OBJS)
 	c++ $(FLAGS) $(OBJS) -o $@
+
+all : $(NAME)
 
 clean :
 	reset
@@ -29,13 +29,13 @@ fclean : clean
 
 re : fclean all
 
-test : re
+run : all
 	./$(NAME) 6667 okok
 
 nc :
-	nc 127.0.0.1 6667
+	nc localhost 6667
 
 irssi :
 	irssi --config irssi.config
 
-.PHONY: all clean fclean re test nc irssi
+.PHONY: all clean fclean re run nc irssi
