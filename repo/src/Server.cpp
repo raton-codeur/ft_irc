@@ -161,7 +161,7 @@ void Server::detachClientFromChannels(Client& client)
 		{
 			Client* new_op = *(channel->getMembers().begin());
 			channel->addOperator(new_op);
-			std::string op_msg = ":" + new_op->getPrefix() + " MODE " + channel->getName() + " +o " + new_op->getNickname();
+			std::string op_msg = new_op->getPrefix() + " MODE " + channel->getName() + " +o " + new_op->getNickname();
 			notifyChannelMembers(channel, op_msg, NULL);
 		}
 		if (channel->getMembers().empty())
