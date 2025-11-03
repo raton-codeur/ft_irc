@@ -10,18 +10,4 @@ changer le texte ascii, il est trop gros
 
 retirer fsanitize
 
-retirer le mot de passe dans le makefile et le irssi.config avant de commit
-
-mode -+i : pas une erreur ?
-
-
-parfois irssi envoie une commande mode qu'on ne gère pas ?
-b <<< MODE #a b
-b >>> :irc.qhauuy-jteste.local 482 #a :You're not channel operator
-
-
-c'est normal ça ? on voit pas le nick de b dans la réponse
-a <<< MODE #a +o b
-a >>> :a!quentinjason@localhost MODE #a +o
-b >>> :a!quentinjason@localhost MODE #a +o
 

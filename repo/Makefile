@@ -35,8 +35,8 @@ run : all
 nc :
 	nc -q0 localhost 6667
 
-irssi-% :
-	@ sed -i '' "5s/.*/    nick = \"$*\";/" irssi.config
+irssi :
+# 	@ sed -i '' "5s/.*/    nick = \"$*\";/" irssi.config
 	@ irssi --config irssi.config
 
 .PHONY: all clean fclean re run nc irssi
