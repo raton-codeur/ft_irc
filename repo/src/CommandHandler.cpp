@@ -563,17 +563,9 @@ void CommandHandler::mode(Client& client, const std::vector<std::string>& args)
 					return;
 				}
 				long limit;
-				try
-				{
-					limit = std::atol(mode_params[index].c_str());
-				}
-				catch(...)
-				{
-					client.send(":" + _server.getHostname() + " 501 MODE :Invalid limit parameter");
-					return;
-				}
-
-				if (limit <= 0 || limit > INT_MAX)
+				char* end;
+				limit = std::strtol(mode_params[index].c_str(), &end, 10);
+				if (*end != '\0' || limit <= 0 || limit > INT_MAX)
 				{
 					client.send(":" + _server.getHostname() + " 501 MODE :Invalid limit parameter");
 					return;
